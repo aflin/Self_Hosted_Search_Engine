@@ -1,0 +1,277 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>chat</title>
+<style>
+html,body {
+    height:100%;
+    font-family:Arial, Helvetica, sans-serif;
+    margin:0;
+}
+#container{
+    border:5px solid grey;
+    position: absolute;
+    margin-top : 10px;
+    padding:10px;
+    bottom:30px;
+    top: 30px;
+    right:20px;
+    left:20px;
+}
+#chatdiv{
+    padding:5px;
+    border:2px solid gray;
+    height: calc(100% - 175px);
+    overflow-y: scroll;
+    margin:0;
+    margin-top: 5px;    
+}
+.event {
+    color:#999;
+}
+.n {
+    color:#393;
+}
+.i {
+    vertical-align: top;
+}
+.s {
+    color:#933;
+}
+#wrapper{
+    height: 100%;
+}
+#name{
+    width:220px;
+}
+#chatdiv.dropping {
+    border: 2px blue dashed;
+}
+
+#chatin{
+    width: calc(100% - 120px);
+    height: 1.5em;
+    margin-top: 7px;
+}
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+    var socket;
+    var name;
+    var reconnected=false;
+    var cd = $('#chatdiv');
+    var prot;
+    var htmlEscape=true;
+
+    if (/^https:/.test(window.location.href))
+        prot='wss://'
+    else
+        prot='ws://'
+
+    function isOpen(ws) { return ws.readyState === ws.OPEN }
+
+    function displaydrop(data, blob)
+    {
+        var finfo=data.file;
+        var b = blob.slice(0, blob.size, finfo.type);
+        var linkurl = URL.createObjectURL(b);
+        if(/^image/.test(finfo.type))
+        {
+            cd.append('<span class="s i">' + data.from + 
+            ':</span> <img style="height: 300px"><br>');
+            var img = cd.find('img').last();
+            img.attr({'src': linkurl, 'alt': finfo.name});            
+        } else {
+            cd.append('<span class="s">' + data.from +  ':</span> FILE: <a>'+finfo.name+'</a><br>');
+            var a = cd.find('a').last();
+            a.attr({"href":linkurl, "download":finfo.name});
+        }
+        cd.scrollTop(cd.height() + 300);
+        data=false;
+    }
+
+    function handle_drop(e){
+        e.preventDefault();
+        e.stopPropagation();
+        cd.removeClass("dropping");
+        e = e.originalEvent;
+        if(!isOpen(socket))
+        return;//fix me.
+
+        function sendfile(file) {
+            var reader = new FileReader()
+            reader.onload = function (event) {
+                socket.send(event.target.result);
+            };
+            reader.readAsArrayBuffer(file);
+            displaydrop({from:name,file:{name:file.name,type:file.type}}, file);
+        }
+
+        if (e.dataTransfer.items) {
+            // Use DataTransferItemList interface to access the file(s)
+            for (var i = 0; i < e.dataTransfer.items.length; i++) {
+                // If dropped items aren't files, reject them
+                if (e.dataTransfer.items[i].kind === 'file') {
+                    var file = e.dataTransfer.items[i].getAsFile();
+                    var json = JSON.stringify({file:{name:file.name,type:file.type}});
+                    socket.send(json); 
+                    sendfile(file);
+                }
+            }
+        } else {
+            // Use DataTransfer interface to access the file(s)
+            for (var i = 0; i < e.dataTransfer.files.length; i++) {
+                var file = e.dataTransfer.files[i];
+                socket.send(JSON.stringify({file:file})); 
+                sendfile(file);
+            }
+        }
+    }
+
+    function getcookie(cname){ 
+        //https://www.30secondsofcode.org/js/s/parse-cookie
+        var cookies = document.cookie
+            .split(';').map(v => v.split('='))
+            .reduce
+            ( (acc, v) => {
+                acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
+                return acc;
+                }, {}
+            );
+        return cookies[cname];
+    }
+
+    function message(data){
+        if(htmlEscape)
+            data.msg = $('<div/>').text(data.msg).html();
+        if(data.from=="System")
+            cd.append('<span class="s">' + data.from + ":</span> " + data.msg +'<br>');
+        else
+            cd.append('<span class="n">' + data.from + ":</span> " + data.msg +'<br>');
+        cd.scrollTop(cd.height());
+    }
+
+    var ExpectedFileData=[];
+
+    function procmess (msg){
+        var data;
+        if(ExpectedFileData.length && msg.data instanceof Blob) {
+            var fdata = ExpectedFileData.shift();
+            displaydrop(fdata, msg.data);
+            return;
+        }
+        try{
+            data = JSON.parse(msg.data);
+        } catch (e) {
+            cd.append('<span style="color:red;">error parsing message</span><br>');
+        }
+        // if reconnected, skip welcome message.
+        if(reconnected){
+            reconnected=false;
+            return;
+        }
+
+        if(data){
+            if (data.file)
+                ExpectedFileData.push(data);
+            else
+                message(data);
+        }
+    }
+
+    function send(){
+        var text=$('#chatin').val();
+
+        if(text==""){
+            return ;
+        }
+
+        var data= {
+            msg: text,
+            from: name
+        };
+
+        try{
+            if(!isOpen(socket) && !reconnected) {
+                socket = new WebSocket(prot + window.location.host + "/wschat");
+                socket.addEventListener('open', function(e){
+                    socket.send(text);
+                    reconnected=true;
+                    $('#chatin').val("");
+                    message(data);
+                    socket.onmessage = procmess;
+                });
+                return;
+            }
+            socket.send(text);
+            message(data);
+        } catch(e){
+            message({from:"System",msg:'error sending message'});
+        }
+        $('#chatin').val("");
+    }
+
+    function start() {
+        if(socket)
+            socket.close();
+        socket = new WebSocket(prot + window.location.host + "/wsapps/websockets_chat/wschat.json");
+        socket.onmessage = procmess;
+    }
+
+    function setname() {
+        name = $('#name').val();
+        if(name=="")
+        return;
+        document.cookie = "username="+name + "; path=/; sameSite=Strict";
+        start();
+    }
+
+    cd.on("drop",handle_drop).on("dragover",function(e){
+        e.preventDefault();  
+        e.stopPropagation();
+        cd.addClass("dropping");
+    }).on("dragleave",function(e){
+        e.preventDefault();  
+        e.stopPropagation();
+        cd.removeClass("dropping");
+    });
+
+    $('#chatin').keypress(function(event) {
+        if (event.keyCode == '13') {
+            send();
+        }
+    });
+
+    $('#name').keypress(function(event) {
+        if (event.keyCode == '13') {
+            setname();
+            $('#chatin').focus();
+        }
+    });
+
+    name = getcookie("username");
+
+    if(name) {
+        start();
+        $('#name').val(name);
+        $('#chatin').focus();
+    }
+
+});
+</script>
+</head>
+<body>
+    <div id="wrapper">
+        <div id="container">
+            <h2>Demo WebSockets</h2>
+            <span id="namespan">Your Name: <input placeholder="Type your name and press enter" id="name" type="text"></span>
+            <div id="chatdiv">
+            </div>
+            <input id="chatin" type="text" />
+            <button id="disconnect">Disconnect</button>
+        </div>
+    </div>
+</body>
+</html>
