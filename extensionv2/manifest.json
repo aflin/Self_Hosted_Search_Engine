@@ -8,8 +8,12 @@
     "tabs",
     "storage",
     "activeTab",
+    "webRequest",
     "<all_urls>"
   ],
+  "background": {
+    "scripts": ["background.js"]
+  },
   "icons": {
     "48": "icon48.png"
   },

@@ -1,5 +1,5 @@
 var hardcode={
-"--portals":{"google.com":2,"yahoo.com":2,"bing.com":2,"duckduckgo.com":2,"dogpile.com":2,"baidu.com":2,"ask.com":2,"aol.com":2,"wolframalpha.com":2,"yandex.ru":2},
+"--portals":{"google.com":2,"yahoo.com":2,"bing.com":2,"duckduckgo.com":2,"chatgpt.com":2,"dogpile.com":2,"baidu.com":2,"ask.com":2,"aol.com":2,"wolframalpha.com":2,"yandex.ru":2},
 "--usbanks" : {"chase.com":2,"bankofamerica.com":2,"wellsfargo.com":2,"citi.com":2,"usbank.com":2,"pnc.com":2,"td.com":2,"capitalone.com":2,"bnymellon.com":2,"statestreetbank.com":2,"bbt.com":2,"schwabbank.com":2,"suntrust.com":2,"hsbc.com":2,"marcus.com":2,"ally.com":2,"53.com":2,"morganstanley.com":2,"key.com":2,"northerntrust.com":2,"citizensbank.com":2,"unionbank.com":2,"regions.com":2,"mtb.com":2,"americanexpress.com":2,"bmoharris.com":2,"huntington.com":2,"discover.com":2,"firstrepublic.com":2,"navyfederal.org":2,"bankofthewest.com":2,"bbvacompass.com":2,"synchronybank.com":2,"usaa.com":2,"santanderbank.com":2,"comerica.com":2,"morganstanley.com":2,"zionsbank.com":2,"svb.com":2,"ubs.com":2,"cnb.com":2,"mynycb.com":2,"signatureny.com":2,"peoples.com":2,"db.com":2,"bankoncit.com":2,"firsttennessee.com":2,"ncsecu.org":2,"eastwestbank.com":2,"firstcitizens.com":2,"tiaabank.com":2,"bankofoklahoma.com":2,"associatedbank.com":2,"banking.barclaysus.com":2,"fnb-online.com":2,"synovus.com":2,"snb.com":2,"bankunited.com":2,"frostbank.com":2,"valley.com":2,"iberiabank.com":2,"hancockwhitney.com":2,"texascapitalbank.com":2,"websteronline.com":2,"umpquabank.com":2,"cibc.com":2,"myinvestorsbank.com":2,"pacificwesternbank.com":2,"commercebank.com":2,"salliemae.com":2,"pnfp.com":2,"penfed.org":2,"tcfbank.com":2,"raymondjamesbank.com":2,"prosperitybankusa.com":2,"ozk.com":2,"westernalliancebank.com":2,"fhb.com":2,"umb.com":2,"chemicalbank.com":2,"fnbo.com":2,"mbfinancial.com":2,"bankwithunited.com":2,"arvest.com":2,"becu.org":2,"efirstbank.com":2,"flagstar.com":2,"oldnational.com":2,"bancorpsouth.com":2,"boh.com":2,"statefarm.com":2,"cathaybank.com":2,"simmonsbank.com":2,"stifelbank.com":2,"washingtonfederal.com":2,"midfirst.com":2,"schoolsfirstfcu.org":2,"my100bank.com":2,"bankofhope.com":2,"firstmidwest.com":2,"stockplanconnect.com":2,"morganstanleyclientserv.com":2,"ameritrade.com":2,"etrade.com":2,"schwab.com":2,"fidelity.com":2}
 };
 var settings={}
@@ -75,7 +75,7 @@ function start(f){
                 browser.storage.local.set({exclude:settings.exclude});
             }
             if(settings.server) {
-                server = `https://${settings.server}/apps/search`;
+                server = `https://${settings.server}/apps/shse`;
                 sstore = `${server}/store.json`;
                 sdelete= `${server}/delete.json`;
                 scheck = `${server}/check.json`;
@@ -103,7 +103,7 @@ function checkexclude (exclude,doms) {
     return false;
 }
 
-function postdata (surl, obj,msgs,callback){
+function postdata (surl, obj, msgs, callback){
     //obj.label=settings.label?settings.label:'';
     obj.key=settings.key;
     obj.user=settings.user;
@@ -144,6 +144,7 @@ function infobox(excluded) {
         '#FF .FF-oc{background-position-y:-128px;width:12px;}#FF .FF-close-gray{background-position-x:0}#FF .FF-close-green{background-position-x:-12px}#FF .FF-close-red{background-position-x:-24px}#FF .FF-open-gray{background-position-x:-36px}#FF .FF-open-green{background-position-x:-48px}#FF .FF-open-red{background-position-x:-60px}'+
         '#FF .FF-del{width:48px;background-position-x:-72px;background-position-y:-128px;}'
     +'</style>');
+
     $('body').prepend('<div id="FF" style="border-top-left-radius:16px;border-bottom-left-radius:16px;border:1px solid #DDD;transform-origin: right top 0px;position:fixed; right:6px; top:0px;width:200px; height:32px; color:black; font-family: Arial, Helvetica, sans-serif;background-color:rgba(255,255,255,0.8); z-index:1000000000;">'+
         '<div class="FF-action FF-ico FF-circle" id="FF_record" title="page not saved" style="margin-right:32px;margin-left:4px;'+bdivstyle+'"></div>'+
         '<div class="FF-action FF-ico FF-black-cam" title="click to manually index text currently on this page" id="FF_snapshot" style="'+bdivstyle+'"></div>'+
@@ -167,7 +168,10 @@ function infobox(excluded) {
 
     snap.click(function(){
         rec.removeClass('FF-green FF-white').addClass('FF-red')
-        savepage();
+        savepage(function(success){
+            if(success)
+                del.removeClass('FF-hidden2');
+        });
     });
 
     del.click(function(){
@@ -328,7 +332,7 @@ var blinking=false;
 function update_status (obj) {
     var rec=$('#FF_record'), infobox=$('#FF');
     var colorclass = "FF-" + obj.color;
-    var opencloseclass = "FF-close-"+obj.color;
+    var opencloseclass = settings.manualOnly ? "FF-close-gray":"FF-close-"+obj.color;
     var ib_openclose = $('#FF_collapse');
 
     if(obj.shape == 'circle')
@@ -378,37 +382,66 @@ function update_status (obj) {
     );
 }
 
+//get subtitles url from background.js
+var ytsubs;
+var ytv;
+
 function get_youtube_captions(cb) {
-    var scriptContent = Array.from(document.scripts).map(script => script.textContent).join('\n');
-    try {
-        var rawurl = scriptContent.match(/captionTracks"[^{]+{"baseUrl":"([^"]+)/)[1];
-        var tmpobjtxt = '{"url":"'+rawurl+'"}';
-        var tmpobj = JSON.parse(tmpobjtxt);
-        var url = tmpobj.url;
-        fetch(url).then(function(resp){
-            return resp.text();
-        }).then(function(data) {
-            var d=data.replace(/<text[^>]+>/g,'')
-                      .replace(/<\/text>/g,' ')
-                      .replace(/<[^>]+>/g,'')
-                      .replace(/[ \u00A0\t]+/g,' ');
-            cb(d);
-        }).catch(function(e){
+    if(ytsubs) {
+        try {
+            fetch(ytsubs).then(function(resp){
+                return resp.json();
+            }).then(function(data) {
+                let d="", events=data.events;
+                //console.log("THE DATA FROM YTSUBS:", data);
+                for (var evn in events) {
+                    const ev=events[evn];
+                    console.log(ev);
+                    for (var segn in ev.segs) {
+                        const seg=ev.segs[segn];
+                        let txt=seg.utf8;
+                        //console.log(txt);
+                        d+=txt + " ";
+                    }
+                }
+                d=d.replace(/\S+/,' ');
+                cb(d);
+            }).catch(function(e){
+                cb(false,e);
+            });
+        } catch(e) {
+            //console.log("failed to grab youtube captions",e);
             cb(false,e);
-        });
-    } catch(e) {
-        //console.log("failed to grab youtube captions",e);
-        cb(false,e);
+        }
+        return;
     }
+    //console.log("no subtitles loaded");
+    cb(false, new Error("No captions loaded")); // ytsubs undefined
 }
 
-function savecb(sobj){
+if(window.location.hostname=='www.youtube.com') {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        //console.log("UNFILTERED MESSAGE:", message);
+        if( window.location.pathname=='/watch') {
+            let params = new URLSearchParams(window.location.search);
+            ytv = params.get('v');
+            if (ytv && message.type === "yt-subs" && message.v==ytv ) {
+                //console.log("Intercepted AJAX URL:", message);
+                ytsubs=message.req?.url;
+                //console.log("YTSUBS URL:",ytsubs);
+            }
+        }
+    });
+}
+
+
+function savecb(sobj,callback){
  
     if (!sobj.img) sobj.img='';
  
     postdata(sstore, sobj,
         {
-            success: "Page successfully saved",
+            success: "Page successfully saved just now",
             fail:    "Failed to save page to server"
         },
         function(success, data) {
@@ -418,6 +451,7 @@ function savecb(sobj){
                     flash: true, 
                     msg: data.status
                 });
+            if(callback) callback(success, data);
         }
     );
 }
@@ -470,20 +504,39 @@ function savepage (callback){
     // youtube thumb
     if (/^https:\/\/www.youtube.com\/watch\?.*v=/.test(url) ) {
 
-            if(!sobj.img) {
+            //if(!sobj.img) {
                 let id=url.match(/\?.*v=([^&]+)/);
                 if (id.length>1) sobj.img='https://i.ytimg.com/vi/' + id[1] + '/hqdefault.jpg';
+            //}
+
+            // toggle the subtitles button if not on.  Triggers loading of subtitles.
+            var stb=$('.ytp-subtitles-button');
+            if(stb.attr('aria-pressed')=='false') {
+                stb.click();
+                stb.click();
+                // wait 2 secs for message from background.js, then try to get subtitles.
+                setTimeout(() => {
+                    get_youtube_captions(function(ctxt,err){
+                        if(ctxt)
+                            sobj.text = sobj.text + ' ' + ctxt;
+
+                        if(err)
+                            console.log("Failed to get youtube captions", err);
+
+                        savecb(sobj);
+                    });
+                }, 2000);
+            } else {
+                get_youtube_captions(function(ctxt,err){
+                    if(ctxt)
+                        sobj.text = sobj.text + ' ' + ctxt;
+
+                    if(err)
+                        console.log("Failed to get youtube captions", err);
+
+                    savecb(sobj,callback);
+                });
             }
-
-            get_youtube_captions(function(ctxt,err){
-                if(ctxt)
-                    sobj.text = sobj.text + ' ' + ctxt;
-
-                if(err)
-                    console.log("Failed to get youtube captions", err);
-
-                savecb(sobj);
-            });
             return;
     } 
 
@@ -495,7 +548,7 @@ function savepage (callback){
             sobj.img=i;
     }
 
-    savecb(sobj);
+    savecb(sobj,callback);
 
 }
 
@@ -678,7 +731,7 @@ function get_page_info(){
         });
 
     }
-
+    /*
     function gettw(){
         var posts = $('div[data-testid="cellInnerDiv"]');
         posts.each(function(i){
@@ -748,6 +801,7 @@ function get_page_info(){
 
         console.log(posts);
     }
+    */
 
     // an object for bluesky stuff
     settings.bs={};
@@ -827,9 +881,23 @@ function get_page_info(){
     }
 
     if(grabpage) {
+
+        //FIXME: redundant in savepage()
+        var htmlEls = document.getElementsByTagName('html');
+        var mainHtml,title, i, maxlen=-1;
+        var sobj={};
+        for (i=0;i<htmlEls.length;i++) {
+            let el=htmlEls[i], len=el.innerText.length;
+            if(len>maxlen) {
+                maxlen=len;
+                mainHtml=$(el);
+            }
+        }
+        title=mainHtml.find('head').find('title').eq(0).text();
+
         postdata(
             scheck, 
-            {furl:url},
+            {furl:url,title: title},
             {
                 success: "Page status updated",
                 fail:    "Failed to get page status from server"
@@ -839,7 +907,8 @@ function get_page_info(){
                     if (!skip)
                         setTimeout( function() {
                             if (!settings.manualOnly)
-                                savepage();
+                                savepage(function(){
+                                });
                         } ,5000);
                     else console.log("skipping content from "+ site);
                 } else {
@@ -891,9 +960,21 @@ function get_page_info(){
 
 
 $(document).ready(function() {
+   let lastUrl = location.href;
+
    if (window.safari && window.top != window) {
        return;
    } 
+   
    start(get_page_info);
+
+   setInterval(() => {
+       if (location.href !== lastUrl) {
+           lastUrl = location.href;
+           get_page_info();
+      }
+    }, 1000);
+
+
 });
 

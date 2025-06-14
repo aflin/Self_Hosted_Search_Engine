@@ -113,7 +113,7 @@ function mktitles(){
 	    req.user= gset.user;
 	    req.key = gset.key;
 		$.post({
-		    url: `https://${gset.server}/apps/search/delete.json` ,
+		    url: `https://${gset.server}/apps/shse/delete.json` ,
             data: req, 
 
 		    success: function(data){
@@ -207,7 +207,7 @@ function dosearch(skip,q) {
 	if (!skip) skip=0;
 	else skip=parseInt(skip);
 	if (q != '')
-	 $.post( `https://${gset.server}/apps/search/results.json` ,
+	 $.post( `https://${gset.server}/apps/shse/results.json` ,
 	   {q:q, sk:skip, user:gset.user, key: gset.key},
 	   function(data){
 		if (!data.rowCount)
@@ -286,7 +286,7 @@ $(document).ready(function(){
 		
 
 		fq.devbridgeAutocomplete({
-			serviceUrl: `https://${gset.server}/apps/search/autocomp.json`,
+			serviceUrl: `https://${gset.server}/apps/shse/autocomp.json`,
 			//serviceUrl: 'https://squush.com/showme.html?ac=1&u='+encodeURIComponent(user),
 			params: {user:gset.user, key:gset.key},
 			dataType: 'json',
@@ -357,23 +357,26 @@ $(document).ready(function(){
 	   	$('#res').show();
 	   } else
 		browser.storage.local.get().then (function(settings){
-			var lb,key,keyrow,pass,passrow,em,ex,serv,mwidth="min-width",mextra='';
+			var lb,key,keyrow,pass,passrow,em,ex,serv,mwidth="width",mextra='';
 			gset=settings;
-			if (mobile){
-				mwidth='width';
-				mextra='</tr><tr style="white-space:nowrap">'
-			}
+			//if (mobile){
+			//	mwidth='width';
+			//	mextra='</tr><tr style="white-space:nowrap">'
+			//}
 			$('#res').hide();
 			$('body').append(
 			`<div id="setbox">
 				<table style="margin:auto">
 				    <tr>
 				        <td><b>User Name:</b></td>
-				        <td><input type="text" id="em" placeholder="Name" style="box-sizing:border-box;${mwidth}:150px;height:30px;font:normal 18px arial,sans-serif;padding: 1px 3px;border: 2px solid #ccc;"></td>
+				        <td><input type="text" id="em" placeholder="Name" style="box-sizing:border-box;${mwidth}:230px;height:30px;font:normal 18px arial,sans-serif;padding: 1px 3px;border: 2px solid #ccc;"></td>
                     </tr>
                     <tr>
 				        <td><b>Server Address:</b></td>
-				        <td><input type="text" id="serverAddr" placeholder="myserv.example.com" style="box-sizing:border-box;${mwidth}:150px;height:30px;font:normal 18px arial,sans-serif;padding: 1px 3px;border: 2px solid #ccc;"></td>
+				        <td>
+				            <span style="font:normal 18px arial,sans-serif;display: inline-block;position: absolute;top: 5px;left: 4px;">https://</span>
+				            <input type="text" id="serverAddr" placeholder="myserv.example.com" style="box-sizing:border-box;${mwidth}:230px;height:30px;font:normal 18px arial,sans-serif;padding: 1px 0px 3px 57px;border: 2px solid #ccc;">
+                        </td>
                     </tr>
                     <tr id="keyrow">
                         <td><b>Server Key</b>:</td>
@@ -425,8 +428,6 @@ $(document).ready(function(){
 				settings.exclude= {
 					'--usbanks': 2,
 					'--portals':2,
-					'youtube.com': 2,
-					'netflix.com': 2
 				};
 				browser.storage.local.set({exclude:settings.exclude});
 			}
@@ -434,9 +435,22 @@ $(document).ready(function(){
 			em.focusout(function(){
 			    settings.user=em.val();
             });
-            
+
+			function addrow(e,k,c) {
+				ex.find('tr:last').before(
+					'<tr><td><span class="remex" style="color:red;cursor:pointer;font:normal 22px arial,sans-serif;margin:4px">&#x2718;</span><input type="text" value="'+(k?k:'')+'" class="exentry" style="box-sizing:border-box;' + mwidth + ':150px;height:30px;font:normal 18px arial,sans-serif;padding: 1px 3px;border: 2px solid #ccc;"></td>'+
+					mextra + '<td><label>Include Subdomains<input class="subd" type="checkbox"'+(c==2?' checked':'')+'></label>'+
+					'</td></tr>'
+				);
+			}
+
             serv.focusout(function(){
                 settings.server=serv.val();
+                if(!settings.noAddShseServer){ //do this only once
+                    addrow(null, settings.server, 1);
+                    settings.noAddShseServer=true;
+                }
+                    
             });
 
 			$("#usepass").click(function(e){
@@ -449,7 +463,7 @@ $(document).ready(function(){
 			        alert("No Server Specified");
                 else {
                     let u=em.val(), p=pass.val();
-                    $.post('https://' + serv.val() + '/apps/search/cred.json',
+                    $.post('https://' + serv.val() + '/apps/shse/cred.json',
                         {user: u, pass: p},
                         function(data) {
                             passrow.hide();
@@ -464,13 +478,6 @@ $(document).ready(function(){
 			});
 
 			
-			function addrow(e,k,c) {
-				ex.find('tr:last').before(
-					'<tr><td><span class="remex" style="color:red;cursor:pointer;font:normal 22px arial,sans-serif;margin:4px">&#x2718;</span><input type="text" value="'+(k?k:'')+'" class="exentry" style="box-sizing:border-box;' + mwidth + ':150px;height:30px;font:normal 18px arial,sans-serif;padding: 1px 3px;border: 2px solid #ccc;"></td>'+
-					mextra + '<td><label>Include Subdomains<input class="subd" type="checkbox"'+(c==2?' checked':'')+'></label>'+
-					'</td></tr>'
-				);
-			}
 
 			for (var k in settings.exclude) {
 				addrow(null,k,settings.exclude[k]);

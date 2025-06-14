@@ -7,9 +7,11 @@ if(!global.serverConf) serverConf={dataRoot:'/usr/local/rampart/web_server/data'
 
 var Sql = use.sql;
 var crypto = use.crypto;
+var urlutil=use.url;
 
-var sql = new Sql.init(`${serverConf.dataRoot}/search/`, true);
+var sql = new Sql.init(`${serverConf.dataRoot}/shse/`, true);
 
+// for type ahead suggestions
 sql.set({"indexaccess":true});
 
 function indexExists(idxname) {
@@ -59,9 +61,6 @@ function makeSystemTables() {
         }
     }
 
-    // do we need indexes on this?  How large will it get?
-    // might be better to use lmdb.
-
     return true;
 }
 
@@ -76,7 +75,7 @@ function makeUserTables(tbname) {
 
         if(!tableExists(`${tbname}_pages`)) {
             fprintf(stderr, `error creating ${tbname}_pages: %s\n`, sql.errMsg);
-            return false;
+            return {error: sprintf(`error creating ${tbname}_pages: %s`, sql.errMsg)};
         }
     }
 
@@ -84,7 +83,7 @@ function makeUserTables(tbname) {
         sql.exec(`create index ${tbname}_pages_Dom_x on ${tbname}_pages(Dom);`);
         if(!indexExists(`${tbname}_pages_Dom_x`)) {
             fprintf(stderr, `error creating ${tbname}_pages_Dom_x: %s\n`, sql.errMsg);
-            return false;
+            return {error: sprintf(`error creating ${tbname}_pages_Dom_x: %s`, sql.errMsg)};
         }
     }
 
@@ -92,7 +91,7 @@ function makeUserTables(tbname) {
         sql.exec(`create unique index ${tbname}_pages_Hash_ux on ${tbname}_pages(Hash);`);
         if(!indexExists(`${tbname}_pages_Hash_ux`)) {
             fprintf(stderr, `error creating ${tbname}_pages_Hash_ux: %s\n`, sql.errMsg);
-            return false;
+            return {error: sprintf(`error creating ${tbname}_pages_Hash_ux: %s`, sql.errMsg)};
         }
     }
 
@@ -104,7 +103,7 @@ function makeUserTables(tbname) {
         );
         if(!indexExists(`${tbname}_pages_Text_ftx`)) {
             fprintf(stderr, `error creating ${tbname}_pages_Text_ftx: %s\n`, sql.errMsg);
-            return false;
+            return {error: sprintf(`error creating ${tbname}_pages_Text_ftx: %s`, sql.errMsg)};
         }
     }
 
@@ -115,7 +114,7 @@ function makeUserTables(tbname) {
             );`);
         if(!tableExists(`${tbname}_history`)) {
             fprintf(stderr, `error creating ${tbname}_history: %s\n`, sql.errMsg);
-            return false;
+            return {error: sprintf(`error creating ${tbname}_history: %s`, sql.errMsg)};
         }
     }
 
@@ -123,7 +122,7 @@ function makeUserTables(tbname) {
         sql.exec(`create index ${tbname}_history_Hash_x on ${tbname}_history(Hash);`);
         if(!indexExists(`${tbname}_history_Hash_x`)) {
             fprintf(stderr, `error creating ${tbname}_history_Hash_x: %s\n`, sql.errMsg);
-            return false;
+            return {error: sprintf(`error creating ${tbname}_history_Hash_x: %s`, sql.errMsg)};
         }
     }
 
@@ -131,13 +130,194 @@ function makeUserTables(tbname) {
         sql.exec(`create index ${tbname}_history_Date_x on ${tbname}_history(Date);`);
         if(!indexExists(`${tbname}_history_Date_x`)) {
             fprintf(stderr, `error creating ${tbname}_history_Date_x: %s\n`, sql.errMsg);
-            return false;
+            return {error: sprintf(`error creating ${tbname}_history_Date_x: %s`, sql.errMsg)};
         }
     }
 
     return true;
 }
 
+/* TEMPLATE and other html or scripts*/
+var htmlHead=`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self Hosted Search Engine</title>
+  <script src="/js/jquery-3.7.1.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+
+    header {
+      background-color: #657cc2;
+      color: #fff;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    header img {
+      max-height: 80px;
+      margin-right: 20px;
+    }
+
+    header .title-text {
+      text-align: left;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 2em;
+    }
+
+    header p {
+      margin: 5px 0 0 0;
+      font-size: 1em;
+      color: #ccc;
+    }
+
+    nav {
+      background-color: #222;
+      padding: 10px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    nav a {
+      color: #ccc;
+      text-decoration: none;
+      margin: 0 10px;
+    }
+
+    nav a:hover {
+      color: #fff;
+    }
+
+    footer a {
+      color: #ccc;
+      text-decoration: none;
+      margin: 0 10px;
+    }
+
+    footer a:hover {
+      color: #fff;
+    }
+
+    main {
+      padding: 40px;
+      max-width: 800px;
+      margin: auto;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .search-box {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .search-box input[type="text"] {
+      width: 80%;
+      max-width: 500px;
+      padding: 10px;
+      font-size: 1em;
+    }
+
+    .search-box input[type="submit"] {
+      padding: 10px 20px;
+      font-size: 1em;
+      margin-left: 10px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      background-color: #111;
+      color: #aaa;
+      font-size: 0.9em;
+    }
+    
+  </style>
+`;
+
+var endHtmlHead="</head>";
+var htmlBody="<body>";
+var htmlTop=`
+  <header>
+    <img src="/images/logo.png" alt="Self Hosted Search Engine Logo">
+    <div class="title-text">
+      <h1>Self Hosted Search Engine</h1>
+      <p>Search your web sessions, your way. Privately. Locally.</p>
+    </div>
+  </header>
+
+  <nav>
+    <div>
+      <a href="#">Home</a>
+      <a href="#">History</a>
+      <a href="#">Docs</a>
+      <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
+    </div>
+    <div>
+      <a href="login.html?logout=1">Log out</a>
+    </div>
+  </nav>
+`;
+var htmlMain="<main>";
+var htmlSearch=`
+    <div class="search-box">
+      <form action="/apps/shse/search.html" method="get">
+        <input type="text" autocomplete="off" id="fq" name="q" `;
+
+var endHtmlSearch=`placeholder="Search" required>
+        <input type="submit" value="Search">
+      </form>
+    </div>
+`;
+
+var htmlAbout=`
+    <section>
+      <h2>About</h2>
+      <p>
+        Self Hosted Search Engine is a lightweight, privacy-respecting search platform 
+        that you can run on your own hardware. Designed for developers, archivists, and anyone 
+        who wants full control over their indexed data.
+      </p>
+    </section>
+
+    <section>
+      <h2>Key Features</h2>
+      <ul>
+        <li>Full-text search across visited websites</li>
+        <li>Choose between automatic indexing or manual mode</li>
+        <li>Individual processing of Facebook and BlueSky posts</li>
+        <li>Automatic indexing of Youtube captions.</li>
+        <li>Easy server deployment on Linux and macOS</li>
+      </ul>
+    </section>
+  </main>
+`;
+
+var endHtmlMain="</main>";
+var htmlFooter = `
+  <footer>
+    &copy; 2025 <a href="https://rampart.dev">Moat Crossing Systems, LLC</a>. Released under <a href="https://opensource.org/license/mit">MIT License.</a>
+  </footer>
+`;
+var endHtmlBody=`
+</body>
+</html>
+`;
+
+/* END TEMPLATE and other html or scripts*/
 
 
 var loginredir = {
@@ -152,19 +332,21 @@ var loginredir = {
 function checkcred(req, require_admin) {
     var now;
 
-    if(!req.cookies.sessid)
+    if(!req.cookies.sessid) { 
         return false;
+    }
 
     var res 
     try{
         res = sql.one("select * from sessions where Sessid=?", [req.cookies.sessid]);
     } catch(e){}
-
-    if(!res)
-        return false
-
-    if(require_admin && res.Acctid!='admin')
+    if(!res)  {
         return false;
+    }
+
+    if(require_admin && res.Acctid!='admin') {
+        return false;
+    }
 
     now = parseInt(dateFmt('%s'));
 
@@ -178,12 +360,203 @@ function checkcred(req, require_admin) {
     return res.Acctid;
 }
 
+function dosearch(q,u,s) {
+    s= s ? parseInt(s) :0;
+
+    if(s>90)
+        sql.set({likeprows: s+100});
+    //  image, url, last, hash, dom, title, abstract 
+    var res=sql.exec(`select bintohex(Hash) hash, convert( Last , 'int' ) last, Dom dom, Url url, Image image, Title title,
+        Text abstract from ${u}_pages where Text likep ?`,
+        [q], {skipRows: s, includeCounts:true }
+    );
+
+    for (var i=0; i<res.rows.length; i++) {
+        var row=res.rows[i];
+        row.abstract = Sql.abstract(row.abstract, {max:230, style:'querybest', query:q, markup:"%mbH"});
+    }
+    return res;
+}
+
+var ricos='<span title="Remove" class="rm rico hm">&#x2718;</span><span title="Remove" class="rm rmcb hm"><input type="checkbox" class="sitem" title="select item"></span>';
+
+function searchpage(req) {
+    var user;
+    if(! (user=checkcred(req)) )
+        return loginredir;
+    var res, p=req.params;
+    var q = p.q?p.q:'';
+    var skip=p.sk?parseInt(p.sk):0;
+
+    req.put(`
+${htmlHead}
+<script src="/js/shse.js"></script>
+<script src="/js/jquery.autocomplete.min.js"></script>
+<style>
+    body {font-family: arial,sans-serif;}
+    td {position:relative;}
+    #showrm {position:relative;}
+    .np { cursor:pointer;}
+    .itemwrap{ width: calc( 100% - 70px); position: relative;display: inline-block;}
+    .imgwrap {float: left; display:inline-block;position:relative;padding-top:5px;}
+    .timestamp {color:#07c;vertical-align:top;padding-top:3px;display:inline-block;position:absolute;right:0px;}
+    .abstract { margin-right:5px;}
+    .url-span {color:#006621;max-width:100%;overflow: hidden;text-overflow: ellipsis;white-space:nowrap;display:inline-block;}
+    .url-a {text-decoration: none;font-size:16px;overflow: hidden;text-overflow: ellipsis;white-space:nowrap;display:inline-block; width: calc( 100% - 150px ); }
+    .fimage { margin: 0px 5px 7px 3px; width:54px; height:54px; object-fit:cover;}
+    .ishov {background-color:white;max-height:250px;max-width:500px;object-fit:cover;position:absolute;left:60px;top:0px;border:1px dotted gray;z-index:10;}
+    .b { font-size: 18px; margin-left:4px; }
+    .onsw { background-color: #d00; color: white; float:right;}
+    .onsw-on { background-color:#0c5;} 
+    #res {font-size:12px;padding:15px 10px 0px 0px;}
+    #setbox {position:relative; padding:10px; margin:10px; background-color:#eee; border: 1px dotted gray; top:0px; left:0px;}
+    #setbox td {white-space:nowrap;}
+    .sall{ cursor: pointer;position: absolute;left: -15px;top: 0px;}
+    .ib { display: inline-block; }
+    .rm {display:none; top:24px; position:absolute; font-size: 15px;width: 12px;text-align: center;cursor:pointer; font-weight: bold;}
+    .rico {left: -30px; color:red;}
+    .rmcb {left: -15px;}
+    .resi {min-height:50px;position:relative;clear:both;margin-bottom:15px;}
+    .popup {position:fixed;width:100%;height:100%;z-index:2;top: 0px;left: 0px;background-color: rgba(240,240,240,0.8);}
+    .popup table {border: 1px solid gray;box-shadow: 4px 4px 2px grey;position: absolute;left: 50%;top: 50%;transform: translate(-50%,-50%); background-color:#eee;}
+    .popup td { padding: 4px;}
+    .hide {display:none;}
+    .autocomplete-suggestions { font-size:18px;border:1px solid #999;background:#FFF;cursor:default;overflow:auto;-webkit-box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);-moz-box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);}
+    .autocomplete-suggestion { padding:2px 5px;white-space:nowrap;overflow:hidden;}
+    .autocomplete-no-suggestion { padding:2px 5px;}
+    .autocomplete-selected { background:#DFF }
+    .autocomplete-suggestions strong { font-weight:bold;color:#000;}
+    .autocomplete-group { padding:2px 5px;}
+    .autocomplete-group strong { font-weight:bold;color:#000;display:block;border-bottom:1px solid #000;}
+    .nowrap { white-space:nowrap;}
+    .pag { display:inline-block;margin-right:10px; }
+    .ppag { display:inline-block;margin-right:15px; }
+    .npag { display:inline-block;margin-left:10px; }
+</style>
+${endHtmlHead}
+${htmlBody}
+${htmlTop}
+${htmlMain}
+${htmlSearch}value="${q}" ${endHtmlSearch}
+`);
+
+    if(p.q) {
+        res=dosearch(p.q,user,skip);
+        var total = res.countInfo.indexCount;
+        var cntinfo = res.rowCount ? 
+                      `Results ${skip+1}-${skip+res.rowCount} of ${total}` : 
+                      `no ${total?'more ':''}results for ${q}`;
+//req.printf("<pre>%H</pre>", sprintf("\n%3J\n", res) );
+        req.put(`
+<div id="res">
+    <div title="click to show database editing options" id="showrm">
+        <label class="hide ib sall">
+            <input style="vertical-align:middle" type="checkbox" id="sall" class="hide ib" title="Select All">Select All
+        </label>
+        <span id="showopt" style="position:relative;">
+            <span style="cursor: pointer;position: bsolute;left:-30px;top:-11px;">Options</span>
+            <span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg) translate(4px,0px);font-size:28px;position:absolute;left:-30px;top:-10px;width:13px;" title="click to hide database editing options">‣</span>
+        </span>
+        <span style="display:inline-block;height:22px;padding: 2px 0px 0px 5px;">&nbsp;
+            <span class="hide">
+                <button style="padding: 1px 5px 1px 5px;border:1px solid #b00;position:relative;top:-5px;left:55px;" id="rmselected">Remove Select Items</button>
+            </span>
+        </span>
+        <span style="float:right">Results ${skip+1}-${skip+res.rowCount} of ${res.countInfo.indexCount}</span>
+    </div>`);
+        for (var i=0;i<res.rows.length;i++) {
+			var r=res.rows[i];
+			var favico=null, ico=r.image;
+			var icl = r.image? " hov" : '';
+			var d= new Date(0);
+			d.setUTCSeconds(parseInt(r.last));
+
+			if(!r.image) {
+			    ico='/images/home_website_start_house.svg'
+			    favico=r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico';
+			    //icl = icl + ' cfav';
+            }
+			req.put('<div data-hash="'+r.hash+'" data-dom="'+r.dom+'" id="r'+i+'" class="resi"><span class="imgwrap">'+ricos+
+                '<img class="fimage'+icl+'" src="'+ico+'"'+
+                (favico?' data-favico="'+favico+'"':'') + '></span>'+
+                '<span class="itemwrap"><span class="abstract nowrap"><a class="url-a tar" ' + 
+                /* (browser.t=='f'?'style="width:calc( 100% - 165px )" ':'') + */
+                'target="_blank" href="'+r.url+'">'+
+                sprintf("%H",r.title.replace(/\s+/g,' '))+'</a><span class="timestamp">('+d.toLocaleString()+
+                ')</span></span><br><span class="abstract url-span">'+r.url+
+                '</span></span><br><span class="abstract">'+r.abstract+"</span></div>"
+			);
+        }
+        req.put('</div>');
+    }
+
+    // number pages like        1  2  3  4  5  6  7  8  9 10 Next    or
+    //                   Prev   1 ..  6  7  8  9 10 11 12 13 Next
+    skip = Math.floor(skip/10) * 10;
+    var i=0, pag='', surl=`/apps/shse/search.html?q=${%U:q}`;
+    var curpage = skip/10 + 1;
+    var npages = 1 + Math.floor(total/10);
+    var ppages;
+    if(skip < 55) {
+        if(curpage>1)
+            pag=`<span class="ppag"><a href="${surl}&sk=${skip-10}">Prev</a></span>`;
+        if(npages > 10) ppages=10;
+        else ppages=npages;
+    } else {
+        pag=`<span class="ppag"><a href="${surl}&sk=${skip-10}">Prev</a></span>`+
+            `<span class="pag"><a href="${surl}">1</a></span>` +
+            '<span class="pag">..</span>';
+        ppages=curpage+3;
+        if(ppages>npages)ppages=npages;
+        i=curpage-5;
+    }
+
+    for (;i<ppages;i++) {
+        if(i==curpage-1)
+            pag+=`<span class="pag">${i+1}</span>`;
+        else if(!i)
+            pag+=`<span class="pag"><a href="${surl}">1</a></span>`
+        else
+            pag+=`<span class="pag"><a href="${surl}&sk=${i*10}">${i+1}</a></span>`
+    }
+    skip+=10;
+    if(skip<total)
+        pag+=`<span class="npag"><a href="${surl}&sk=${skip}">Next</a></span>`;
+    
+    return {html:`
+<p><center>${pag}</center></p>
+${endHtmlMain}
+${htmlFooter}
+${endHtmlBody}`}
+
+
+}
 
 function userpage(req){
     if(!checkcred(req))
         return loginredir;
 
-    return "THE USER PAGE (with a search form) GOES HERE"
+    return {html:`
+${htmlHead}
+${endHtmlHead}
+${htmlBody}
+${htmlTop}
+${htmlMain}
+${htmlSearch}${endHtmlSearch}
+
+${htmlAbout}
+
+${endHtmlMain}
+${htmlFooter}
+${endHtmlBody}
+
+`};
+}
+
+function gethash(salt, pass) {
+    //PBKDF2 from passToKeyIV, discard unneeded IV
+    var res = crypto.passToKeyIv({pass:pass,salt:salt});
+    return res.key;
 }
 
 function getusers(req) {
@@ -192,13 +565,24 @@ function getusers(req) {
 }
 
 function make_acctinfo(email,pass) {
-    var salt = sprintf('%0B',crypto.rand(16));
+    var salt = hexify(crypto.rand(16));
     return {
         passsalt: salt,
-        passhash: crypto.hmac(salt, pass),
+        passhash: gethash(salt, pass),
         email: email
     }
 }
+
+function deluser(user) {
+    if(getType(user)!='String' || user.length==0)
+        return false;
+    sql.one("delete from accounts where Acctid=?",[user]);
+    sql.one(`drop table ${user}_pages`);
+    sql.one(`drop table ${user}_history`);
+    
+    return true;
+}
+
 
 function adduser(req) {
     var user = req.params.user;
@@ -210,7 +594,11 @@ function adduser(req) {
 
     var acctinfo = make_acctinfo(email,pass);
     sql.exec("insert into accounts values (COUNTER, ?, 'u', ?)", [user, acctinfo]);
-    makeUserTables(user);
+    var ret=makeUserTables(user);
+    if(ret.error) {
+        deluser(user);
+        return {json:{error: ret.error}};
+    }
 
     if( ! sql.one("select * from accounts where Acctid=?",[user]))
         return {json:{error: sql.errMsg}};
@@ -218,13 +606,11 @@ function adduser(req) {
     return {json:{key:acctinfo.passhash}}
 }
 
-function deluser(req){
+function delusers(req){
     var users = req.params.user, j=0;
     for (var i=0;i<users.length;i++) {
         if(users[i]!='admin') {
-            sql.one("delete from accounts where Acctid=?",[users[i]]);
-            sql.one(`drop table  ${users[i]}_pages`);
-            sql.one(`drop table  ${users[i]}_history`);
+            deluser(users[i]);
             j++;
         }
     }
@@ -286,8 +672,9 @@ function updateuser(req) {
 }
 
 function adminpage(req){
-    if(!checkcred(req, true))
+    if(!checkcred(req, true)) {
         return loginredir;
+    }
 
     // ajax json requests
     switch (req.params.action) {
@@ -296,7 +683,7 @@ function adminpage(req){
         case 'add':
             return adduser(req);
         case 'del':
-            return deluser(req);
+            return delusers(req);
         case 'update':
             return updateuser(req);
     }
@@ -334,8 +721,8 @@ function adminpage(req){
         var chbox = '<input type="checkbox" class="usersel">';
         //if(user=='admin') chbox='';
         return \`<tr>
-            <td style="width:7ch">\${chbox}</td>
-            <td><center class="username">\${user}</center></td>
+            <td class="chkbx">\${chbox}</td>
+            <td class="username usernamecl"><center class="usernamecl">\${user}</center></td>
             <td><input class="useremail" value="\${email}" data-origval="\${email}" type=text size=20></td>
             <td><input class="userpass" placeholder="enter new pass to reset" type=text size=20></td>
             <td class="userkey">\${key}</td>
@@ -386,7 +773,7 @@ function adminpage(req){
 
         if(fail)
             return;
-
+console.log(u[0]);
         \$.post('${jsonpage}', {action:"update", user:u, pass:p, email:e}, function(data) {
             let msg='', total=0;
 
@@ -505,27 +892,33 @@ function adminpage(req){
    ;
 
     req.put(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Log in page</title>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" integrity="sha256-lSjKY0/srUM9BE3dPm+c4fBo1dky2v27Gdjm2uoZaL0=" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/pepper-grinder/jquery-ui.css">
-    <script>
-        ${adminscr}
-    </script>
-</head>
-<body>
+${htmlHead}
+<script src="/js/jquery-ui-1.13.2.min.js"></script>
+<link rel="stylesheet" href="/css/themes/pepper-grinder/jquery-ui.css">
+<script>
+    ${adminscr}
+</script>
+<style>
+    .userkey {font-size: 10px;}
+    .userpass {width:12ch;}
+    .useremail {width:12ch;}
+    .usernamecl {width: 12ch;}
+    .chkbx {width:3ch;}
+</style>
+${endHtmlHead}
+${htmlBody}
+${htmlTop}
+${htmlMain}
+
     <h2>Admin Page</h2>
     <h3>Users</h3>
     <table id="userlist">
         <tr id="hrow">
-            <th style="width:7ch; text-align:left"><label><input type="checkbox" id="userselall">All</label></th>
-            <th style="width:20ch">Name</th>
+            <th style="text-align:left" class="chkbx"><label>All<input type="checkbox" id="userselall"></label></th>
+            <th class="username">Name</th>
             <th>Email</th>
             <th>Password</th>
-            <th style="width:32ch">Key</th>
+            <th>Key</th>
         </tr>
     </table>
     <button id="userdel">Delete User(s)</button>
@@ -534,20 +927,20 @@ function adminpage(req){
 `);
 
     req.put(`<hr><br>
-        <table id="newuser">
-        <tr>
-            <td style="width:7ch">Add:</td>
-            <td style="width:20ch"><input placeholder="name" id="username" type=text size=15></td>
-            <td><input placeholder="email" id="useremail" type=text size=20></td>
-            <td><input placeholder="password" id="userpass" type=text size=20></td>
-            <td><div style="float:right">
-                <button id="useradd">Add New</button>
-            </div></td>
-        </tr>
-        </table>
-    </form>
-</body>
-</html>
+<table id="newuser">
+<tr>
+    <td class="chkbx">Add:</td>
+    <td style="width:20ch"><input placeholder="name" id="username" type=text size=15></td>
+    <td><input placeholder="email" id="useremail" type=text size=20></td>
+    <td><input placeholder="password" id="userpass" type=text size=20></td>
+    <td><div style="float:right">
+        <button id="useradd">Add New</button>
+    </div></td>
+</tr>
+</table>
+${endHtmlMain}
+${htmlFooter}
+${endHtmlBody}
 `);
 
 
@@ -559,7 +952,7 @@ function checkpass(name,pass) {
     var ainfo, calchash;
 
     if(cred && cred.passhash) {
-        calchash = crypto.hmac(cred.passsalt, pass);
+        calchash = gethash(cred.passsalt, pass);
         if(calchash == cred.passhash)
             return cred.passhash;
     }
@@ -581,7 +974,7 @@ function loginRedirect(name, sessid) {
         status:302,
         headers: { 
             "location":   newurl,
-            "Set-Cookie": `sessid=${sessid}`
+            "Set-Cookie": `sessid=${%U:sessid}`
         }
     }
 }
@@ -656,7 +1049,7 @@ function make_session(name, expires) {
 
 
 function login(req) {
-    var name=req.params.name, pass=req.params.pass, credhash,
+    var name=req.params.name, pass=req.params.pass, credhash, logout=req.params.logout
         msg="Log into personal search";
 
     if(!tableExists("accounts"))
@@ -677,8 +1070,7 @@ function login(req) {
         }
     }
 
-    return({html:
-`<!DOCTYPE html>
+    var html = `<!DOCTYPE html>
 <html>
 <head>
     <title>Log in page</title>
@@ -692,7 +1084,14 @@ function login(req) {
     </form>
 </body>
 </html>`
-});
+
+    if(logout) {
+        if(req.cookies.sessid)
+            sql.one("delete from sessions where Sessid=?", [req.cookies.sessid]);
+        return {html:html, headers: {"Set-Cookie": "sessid="} };
+    }
+
+    return {html: html};
 }
 
 // PLUGIN BACK END:
@@ -701,39 +1100,56 @@ function makeReply(rep) {
     return Object.assign({ headers: {"Access-Control-Allow-Origin": '*'} }, rep);
 }
 
-var keycache={};
-
 function checkkey(name,key) {
     if(!name) return false;
-
-    // how many users before we need to use something more sophisticated, or skip all together?
-    if(keycache[name] == key)
-        return true;
 
     var cred = sql.one("select Acctinfo.$.passhash passhash from accounts where Acctid=?", [name]);
 
     if(cred && cred.passhash == key) {
-        keycache[name]=key;
         return true;
     }
     return false;
 }
 
-
+function checkeither(req) {
+    var p=req.params;
+    var user;
+    if(! checkkey( p.user, p.key) ) {
+        if(req.cookies.sessid) {
+            user=checkcred(req);
+            if(!user)
+                return {status:'bad session'};
+        }
+        
+        if(!user)
+            return {status:'bad key'};
+    } else {
+        user=p.user;
+    }
+    return {user:user};
+}
 
 function store (req) {
     var p=req.params;
     if(! checkkey( p.user, p.key) )
         return makeReply( {json: {status:'bad key'}} );
 
-    p.furl = Sql.sandr('>>#=.*', '', p.furl);
-    var hash=crypto.sha1(p.furl, true);
-
-    if(! (p.dom && p.furl && p.text) )
+    if(! (p.furl && p.text) )
         return makeReply( {json: {status:'Missing parameter'}} );
 
+    var comp = urlutil.components(p.furl);
+    if(!comp)
+        return makeReply( {json: {status:'bad url'}} );
+    if(/^file:\/\//.test(p.furl))
+        comp.host="FILE";
+
+    p.furl = comp.url;
+    p.dom  = comp.host;
     if(!p.img) p.img="";
     if(!p.title) p.title=p.dom;
+    p.text = p.title + "\n" + p.furl + "\n" + p.text; 
+
+    var hash=crypto.sha1(p.furl, true);
 
     var res = sql.exec(`insert into ${p.user}_pages values (?,?,?, ?,?,?, ?,?,?);`,
         [hash, 'now', 1, p.dom, p.furl, p.img, p.title, '', p.text]  );
@@ -755,28 +1171,21 @@ function store (req) {
 
 function results(req) {
     var p=req.params;
-    if(! checkkey( p.user, p.key) )
-        return makeReply( {json: {status:'bad key'}} );
+    var user;
+    var sres = checkeither(req);
+    if(sres.status)
+        return makeReply( {json: sres} );
+    else
+        user=sres.user;
 
-    p.sk= p.sk ? parseInt(p.sk) :0;
-
-//    image, url, last, hash, dom, title, abstract 
-    var res=sql.exec(`select bintohex(Hash) hash, convert( Last , 'int' ) last, Dom dom, Url url, Image image, Title title,
-        Text abstract from ${p.user}_pages where Text likep ?q`,
-        p, {skipRows: p.sk, includeCounts:true }
-    );
-
-    for (var i=0; i<res.rows.length; i++) {
-        var row=res.rows[i];
-        row.abstract = Sql.abstract(row.abstract, {max:230, style:'querybest', query:p.q, markup:"%mbH"});
-    }
+    var res=dosearch(p.q, user, p.sk);
     return makeReply( {json: res} );
 }
 
 function getcred(req) {
-    console.log(req.params.user, req.params.pass);
+    //console.log(req.params.user, req.params.pass);
     var key = checkpass(req.params.user, req.params.pass);
-    console.log(req.params.user, req.params.pass, key);
+    //console.log(req.params.user, req.params.pass, key);
     return makeReply( {json: {key: key}} );
 }
 
@@ -785,9 +1194,14 @@ function delentry(req){
     if(! checkkey( p.user, p.key) )
         return makeReply( {json: {status:'bad key'}} );
 
-    p.furl = Sql.sandr('>>#=.*', '', p.furl);
-    if(p.furl)
+
+    if(p.furl) {
+        var comp = urlutil.components(p.furl);
+        if(!comp)
+            return makeReply( {json: {status:'bad url'}} );
+        p.furl = comp.url;
         p.hash=[crypto.sha1(p.furl)];
+    }
 
     if(p.dom) {
         res=sql.exec(`delete from ${p.user}_pages where Dom=?`, [p.dom]);
@@ -811,15 +1225,27 @@ function checkentry(req) {
         return makeReply( {json: {status:'bad key'}} );
 
     p.furl = Sql.sandr('>>#=.*', '', p.furl);
-    var hash=crypto.sha1(p.furl, true);
+    p.hash=crypto.sha1(p.furl, true);
 
-    var res=sql.one(`select convert( Last , 'int' ) last from ${p.user}_pages where Hash=?`, [hash]);
+    //insert into history
+    //        Hash byte(20), Date date, Url varchar(128), 
+    //        Label varchar(16), Title varchar(64)
+    var herrorMsg = false;
+    var herror = !sql.one(`insert into ${p.user}_history values(?hash,'now',?furl,'',?title)`,p);
+    if(herror) herrorMsg = sql.errMsg;
 
-    if(res) {
-        res.saved=true;
-        return makeReply( {json: res} );
-    }
-    return makeReply( {json: {saved:false}} );
+    //check if already saved
+    var res = sql.one(`select convert( Last , 'int' ) last from ${p.user}_pages where Hash=?`, [p.hash]);
+
+    if(!res)
+        res = {saved:false};
+    else
+        res.saved = true;
+
+    res.herror=herror;
+    if(herror) res.errMsg = herrorMsg;
+
+    return makeReply( {json: res} );
 }
 
 var suggestion_word_min_length=3;
@@ -827,10 +1253,11 @@ var suggestion_word_min_length=3;
 function autocomp(req){
     var res;
     var p=req.params;
+    var sres = checkeither(req);
 
-    if(! checkkey( p.user, p.key) )
-        return makeReply( {json: {status:'bad key'}} );
-
+    if(sres.status)
+        return makeReply( {json: sres} );
+    var user = sres.user;
     var q = req.query.query;
     var cwords, word;
 
@@ -843,7 +1270,7 @@ function autocomp(req){
     {
         word=q;
         res=sql.exec(
-            `select Word value from ${p.user}_pages_Text_ftx where Word matches ? order by Count DESC`,
+            `select Word value from ${user}_pages_Text_ftx where Word matches ? order by Count DESC`,
             [word.toLowerCase()+'%']
         );
         cwords=res.rows;
@@ -859,7 +1286,7 @@ function autocomp(req){
             return makeReply({json: { "suggestions":  [q] } });
 
         res=sql.exec(
-            `select Word value from ${p.user}_pages_Text_ftx where Word matches ? order by Count DESC`,
+            `select Word value from ${user}_pages_Text_ftx where Word matches ? order by Count DESC`,
             [word.toLowerCase()+'%']
         );
         cwords = res.rows;
@@ -875,16 +1302,17 @@ function autocomp(req){
 }
 
 module.exports = {
-    //ajax
+    //ajax endpoints
     "store.json":   store,
     "results.json": results,
     "delete.json":  delentry,
     "check.json":   checkentry,
     "autocomp.json":autocomp,
-    //web page
+    "admin.json":   adminpage,
+    "search.html":  searchpage,
+    "cred.json":    getcred,
+    //web pages
     "login.html":   login,
     "user.html":    userpage,
-    "admin.html":   adminpage,
-    "admin.json":   adminpage,
-    "cred.json":    getcred
+    "admin.html":   adminpage
 }

@@ -7,8 +7,12 @@
   "permissions": [
      "tabs",
      "storage",
-     "activeTab"
+     "activeTab",
+     "webRequest"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "host_permissions": [
      "<all_urls>"
   ],
