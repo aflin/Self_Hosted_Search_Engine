@@ -9,7 +9,7 @@ var Sql = use.sql;
 var crypto = use.crypto;
 var urlutil=use.url;
 
-var sql = new Sql.init(`${serverConf.dataRoot}/shse/`, true);
+var sql = Sql.connect(`${serverConf.dataRoot}/shse/`, true);
 
 // for type ahead suggestions
 sql.set({"indexaccess":true});
@@ -68,8 +68,8 @@ function makeSystemTables() {
 function makeUserTables(tbname) {
     if(!tableExists(`${tbname}_pages`)) {
         sql.exec(`create table ${tbname}_pages
-        ( Hash byte(20), Last date, Numvisits int, 
-          Dom varchar(32), Url varchar(128), Image varchar(128), 
+        ( Hash byte(20), Last date, LastV date, Numvisits int,
+          Dom varchar(32), Url varchar(128), Image varchar(128),
           Title varchar(64), Meta varchar(16), Text varchar(1024)
         );`);
 
@@ -108,16 +108,15 @@ function makeUserTables(tbname) {
     }
 
     if(!tableExists(`${tbname}_history`)) {
-        sql.exec(`create table ${tbname}_history (
-            Hash byte(20), Date date, Url varchar(128), 
-            Label varchar(16), Title varchar(64)
-            );`);
+        sql.exec(`create table ${tbname}_history (Hash byte(20), Date date, Day dword, 
+                  Url varchar(128), Label varchar(16), Title varchar(64));`);
         if(!tableExists(`${tbname}_history`)) {
             fprintf(stderr, `error creating ${tbname}_history: %s\n`, sql.errMsg);
             return {error: sprintf(`error creating ${tbname}_history: %s`, sql.errMsg)};
         }
     }
 
+    
     if(!indexExists(`${tbname}_history_Hash_x`)) {   
         sql.exec(`create index ${tbname}_history_Hash_x on ${tbname}_history(Hash);`);
         if(!indexExists(`${tbname}_history_Hash_x`)) {
@@ -126,11 +125,35 @@ function makeUserTables(tbname) {
         }
     }
 
+    if(!indexExists(`${tbname}_history_Day_x`)) {   
+        sql.exec(`create index ${tbname}_history_Day_x on ${tbname}_history(Day);`);
+        if(!indexExists(`${tbname}_history_Day_x`)) {
+            fprintf(stderr, `error creating ${tbname}_history_Day_x: %s\n`, sql.errMsg);
+            return {error: sprintf(`error creating ${tbname}_history_Day_x: %s`, sql.errMsg)};
+        }
+    }
+
     if(!indexExists(`${tbname}_history_Date_x`)) {   
         sql.exec(`create index ${tbname}_history_Date_x on ${tbname}_history(Date);`);
         if(!indexExists(`${tbname}_history_Date_x`)) {
             fprintf(stderr, `error creating ${tbname}_history_Date_x: %s\n`, sql.errMsg);
             return {error: sprintf(`error creating ${tbname}_history_Date_x: %s`, sql.errMsg)};
+        }
+    }
+
+    if(!tableExists(`${tbname}_heatstats`)) {
+        sql.exec(`create table ${tbname}_heatstats (Day dword, Cnt dword)`); 
+        if(!tableExists(`${tbname}_heatstats`)) {
+            fprintf(stderr, `error creating ${tbname}_heatstats: %s\n`, sql.errMsg);
+            return {error: sprintf(`error creating ${tbname}_heatstats: %s`, sql.errMsg)};
+        }
+    }
+
+    if(!indexExists(`${tbname}_heatstats_Day_x`)) {   
+        sql.exec(`create index ${tbname}_heatstats_Day_x on ${tbname}_heatstats(Day);`);
+        if(!indexExists(`${tbname}_heatstats_Day_x`)) {
+            fprintf(stderr, `error creating ${tbname}_heatstats_Day_x: %s\n`, sql.errMsg);
+            return {error: sprintf(`error creating ${tbname}_history_Day_x: %s`, sql.errMsg)};
         }
     }
 
@@ -145,107 +168,11 @@ var htmlHead=`<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Self Hosted Search Engine</title>
   <script src="/js/jquery-3.7.1.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background-color: #f4f4f4;
-      color: #333;
-    }
-
-    header {
-      background-color: #657cc2;
-      color: #fff;
-      padding: 20px 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    header img {
-      max-height: 80px;
-      margin-right: 20px;
-    }
-
-    header .title-text {
-      text-align: left;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 2em;
-    }
-
-    header p {
-      margin: 5px 0 0 0;
-      font-size: 1em;
-      color: #ccc;
-    }
-
-    nav {
-      background-color: #222;
-      padding: 10px 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    nav a {
-      color: #ccc;
-      text-decoration: none;
-      margin: 0 10px;
-    }
-
-    nav a:hover {
-      color: #fff;
-    }
-
-    footer a {
-      color: #ccc;
-      text-decoration: none;
-      margin: 0 10px;
-    }
-
-    footer a:hover {
-      color: #fff;
-    }
-
-    main {
-      padding: 40px;
-      max-width: 800px;
-      margin: auto;
-      background-color: #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-
-    .search-box {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-
-    .search-box input[type="text"] {
-      width: 80%;
-      max-width: 500px;
-      padding: 10px;
-      font-size: 1em;
-    }
-
-    .search-box input[type="submit"] {
-      padding: 10px 20px;
-      font-size: 1em;
-      margin-left: 10px;
-    }
-
-    footer {
-      text-align: center;
-      padding: 20px;
-      background-color: #111;
-      color: #aaa;
-      font-size: 0.9em;
-    }
-    
-  </style>
+  <script src="/js/jquery-ui-1.13.2.min.js"></script>
+  <script src="/js/shse.js"></script>
+  <link rel="stylesheet" href="/css/themes/pepper-grinder/jquery-ui.css">
+  <link rel="stylesheet" href="/css/shse.css">
+  <link rel="stylesheet" href="/css/common.css">
 `;
 
 var endHtmlHead="</head>";
@@ -261,8 +188,8 @@ var htmlTop=`
 
   <nav>
     <div>
-      <a href="#">Home</a>
-      <a href="#">History</a>
+      <a href="/apps/shse/user.html">Home</a>
+      <a href="/apps/shse/history.html">History</a>
       <a href="#">Docs</a>
       <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
     </div>
@@ -273,6 +200,7 @@ var htmlTop=`
 `;
 var htmlMain="<main>";
 var htmlSearch=`
+    <script src="/js/jquery.autocomplete.min.js"></script>
     <div class="search-box">
       <form action="/apps/shse/search.html" method="get">
         <input type="text" autocomplete="off" id="fq" name="q" `;
@@ -336,7 +264,7 @@ function checkcred(req, require_admin) {
         return false;
     }
 
-    var res 
+    var res;
     try{
         res = sql.one("select * from sessions where Sessid=?", [req.cookies.sessid]);
     } catch(e){}
@@ -390,49 +318,6 @@ function searchpage(req) {
 
     req.put(`
 ${htmlHead}
-<script src="/js/shse.js"></script>
-<script src="/js/jquery.autocomplete.min.js"></script>
-<style>
-    body {font-family: arial,sans-serif;}
-    td {position:relative;}
-    #showrm {position:relative;}
-    .np { cursor:pointer;}
-    .itemwrap{ width: calc( 100% - 70px); position: relative;display: inline-block;}
-    .imgwrap {float: left; display:inline-block;position:relative;padding-top:5px;}
-    .timestamp {color:#07c;vertical-align:top;padding-top:3px;display:inline-block;position:absolute;right:0px;}
-    .abstract { margin-right:5px;}
-    .url-span {color:#006621;max-width:100%;overflow: hidden;text-overflow: ellipsis;white-space:nowrap;display:inline-block;}
-    .url-a {text-decoration: none;font-size:16px;overflow: hidden;text-overflow: ellipsis;white-space:nowrap;display:inline-block; width: calc( 100% - 150px ); }
-    .fimage { margin: 0px 5px 7px 3px; width:54px; height:54px; object-fit:cover;}
-    .ishov {background-color:white;max-height:250px;max-width:500px;object-fit:cover;position:absolute;left:60px;top:0px;border:1px dotted gray;z-index:10;}
-    .b { font-size: 18px; margin-left:4px; }
-    .onsw { background-color: #d00; color: white; float:right;}
-    .onsw-on { background-color:#0c5;} 
-    #res {font-size:12px;padding:15px 10px 0px 0px;}
-    #setbox {position:relative; padding:10px; margin:10px; background-color:#eee; border: 1px dotted gray; top:0px; left:0px;}
-    #setbox td {white-space:nowrap;}
-    .sall{ cursor: pointer;position: absolute;left: -15px;top: 0px;}
-    .ib { display: inline-block; }
-    .rm {display:none; top:24px; position:absolute; font-size: 15px;width: 12px;text-align: center;cursor:pointer; font-weight: bold;}
-    .rico {left: -30px; color:red;}
-    .rmcb {left: -15px;}
-    .resi {min-height:50px;position:relative;clear:both;margin-bottom:15px;}
-    .popup {position:fixed;width:100%;height:100%;z-index:2;top: 0px;left: 0px;background-color: rgba(240,240,240,0.8);}
-    .popup table {border: 1px solid gray;box-shadow: 4px 4px 2px grey;position: absolute;left: 50%;top: 50%;transform: translate(-50%,-50%); background-color:#eee;}
-    .popup td { padding: 4px;}
-    .hide {display:none;}
-    .autocomplete-suggestions { font-size:18px;border:1px solid #999;background:#FFF;cursor:default;overflow:auto;-webkit-box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);-moz-box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);}
-    .autocomplete-suggestion { padding:2px 5px;white-space:nowrap;overflow:hidden;}
-    .autocomplete-no-suggestion { padding:2px 5px;}
-    .autocomplete-selected { background:#DFF }
-    .autocomplete-suggestions strong { font-weight:bold;color:#000;}
-    .autocomplete-group { padding:2px 5px;}
-    .autocomplete-group strong { font-weight:bold;color:#000;display:block;border-bottom:1px solid #000;}
-    .nowrap { white-space:nowrap;}
-    .pag { display:inline-block;margin-right:10px; }
-    .ppag { display:inline-block;margin-right:15px; }
-    .npag { display:inline-block;margin-left:10px; }
-</style>
 ${endHtmlHead}
 ${htmlBody}
 ${htmlTop}
@@ -552,6 +437,126 @@ ${endHtmlBody}
 
 `};
 }
+
+var nMonths=3;
+
+function getheatstats(user) {
+    var d, res = sql.one("select min(Date) d from ${user}_history");
+    if(!res) return {}
+    d = dateFmt("%Y-%m-%d 00:00:00", res.d);
+    res = sql.one("select * from ${user}_heatstats where Date=?", [d]);
+    if(!res) makeheatstats(user);
+
+
+
+//    "select dayseq(Date) d, Date, count(d) from aaron_history group by dayseq(Date) order by dayseq(Date)"
+}
+
+function heatdata(req,p,user) {
+    var sm=parseInt(p.startm), sy=parseInt(p.starty);
+    var em=sm+nMonths; ey=sy;
+    if(em>12) {em-=12;ey++;}
+
+    var startdate= `${sy}-${sm}-01`;
+    var enddate  = `${ey}-${em}-01`;
+    var today, max=0, res, rows, i;
+
+    res = sql.one("select dayseq(convert(?,'date')) d", [startdate]);
+    startdate=res.d;
+
+    res = sql.one("select dayseq(convert(?,'date')) d", [enddate]);
+    enddate=res.d-1;
+
+    res = sql.one("select dayseq(convert(?,'date')) d", [dateFmt('%Y-%m-%d')]);
+    today=res.d;
+
+    if(enddate > today) enddate=today;
+
+    //how many days should we have?
+    var expected=(enddate - startdate);
+
+    //get them from heatstat table
+    rows=[];
+    res = sql.exec(`select Day, Cnt from ${user}_heatstats where Day >= ? and Day <= ?`,
+        [startdate, enddate], {maxRows:-1},
+        function(row) {
+            if(row.Cnt>max)max=row.Cnt;
+            rows[row.Day-startdate]=row.Cnt;
+        }
+    );
+
+    if(res != expected) {
+        for (i=0;i<expected;i++)
+        {
+            if(rows[i]===undefined || i==today) {
+                var curday=i+startdate;
+                res=sql.one(`select count(Day) cnt from ${user}_history where Day = ?`,[curday]);
+                if(res && res.cnt) res=res.cnt;
+                else res=0;
+                if(curday!=today) //this one can still change, don't insert
+                    sql.one(`insert into ${user}_heatstats values (?,?)`,[curday,res]);
+                rows[i]=res;
+                if(res>max)max=res;
+            }
+        }
+    }
+    return {json: {rows:rows,max:max}};
+}
+
+function histdata(req) {
+    var p=req.params;
+    var user;
+    if(! (user=checkcred(req)) )
+        return loginredir;
+
+    if(p.startm && p.starty)
+        return heatdata(req,p,user);
+
+    var d=autoScanDate(p.date + ' ' + p.off);
+    var start = dateFmt('%Y-%m-%d', d.date);
+    var end = start + ' 23:59:59';
+    
+    start+=' 00:00:00';
+
+//    return {txt: `select * from ${user}_history where Date >= ? and Date < ? order by Date; ${parseInt(p.start)/1000} ${(parseInt(p.end)+1)/1000}`}
+
+    var res=sql.exec(`select * from ${user}_history where Date >= ? and Date < ? order by Date;`,
+              {maxRows: -1},[parseInt(p.start)/1000, (parseInt(p.end)+1)/1000]); 
+
+    return({json:{res:res, start:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',start), end:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',end)}});
+}
+
+function historypage(req) {
+    var user;
+    if(! (user=checkcred(req)) )
+        return loginredir;
+    var res, p=req.params;
+    var q = p.q?p.q:'';
+
+    //var heatstats = getheatstats(user);
+
+    req.put(`
+${htmlHead}
+<script>
+    var nMonths=${nMonths};
+</script>
+${endHtmlHead}
+${htmlBody}
+${htmlTop}
+${htmlMain}
+
+${htmlSearch}value="${q}" ${endHtmlSearch}
+<p>Date: <div style="transform:scale 70%;" id="datepicker"></div>
+<div id="res"></div>
+`);
+
+    return {html:`
+${endHtmlMain}
+${htmlFooter}
+${endHtmlBody}`}
+
+}
+
 
 function gethash(salt, pass) {
     //PBKDF2 from passToKeyIV, discard unneeded IV
@@ -893,18 +898,9 @@ console.log(u[0]);
 
     req.put(`
 ${htmlHead}
-<script src="/js/jquery-ui-1.13.2.min.js"></script>
-<link rel="stylesheet" href="/css/themes/pepper-grinder/jquery-ui.css">
 <script>
     ${adminscr}
 </script>
-<style>
-    .userkey {font-size: 10px;}
-    .userpass {width:12ch;}
-    .useremail {width:12ch;}
-    .usernamecl {width: 12ch;}
-    .chkbx {width:3ch;}
-</style>
 ${endHtmlHead}
 ${htmlBody}
 ${htmlTop}
@@ -1151,13 +1147,15 @@ function store (req) {
 
     var hash=crypto.sha1(p.furl, true);
 
-    var res = sql.exec(`insert into ${p.user}_pages values (?,?,?, ?,?,?, ?,?,?);`,
-        [hash, 'now', 1, p.dom, p.furl, p.img, p.title, '', p.text]  );
+    var res = sql.exec(`insert into ${p.user}_pages values (?,?,?,?, ?,?,?, ?,?,?);`,
+        [hash, 'now', 'now', 1, p.dom, p.furl, p.img, p.title, '', p.text]  );
 
     if(res.rowCount == 0) {
         if( sql.errMsg.indexOf('insert duplicate value') > -1 ) {
-            res = sql.exec(`update ${p.user}_pages set Last='now', Numvisits = Numvisits + 1, Title=?, Text=? where Hash=?`,
-                [p.title, p.text, hash]    );
+            res = sql.exec(`update ${p.user}_pages set Last='now', LastV='now', Numvisits = Numvisits + 1,
+                            Title=?, Text=? where Hash=?`,
+                            [p.title, p.text, hash]
+                          );
             if(res.rowCount == 0)
                 return makeReply( {json: {status:`error updating: ${sql.errMsg}`}} );
         }
@@ -1230,18 +1228,22 @@ function checkentry(req) {
     //insert into history
     //        Hash byte(20), Date date, Url varchar(128), 
     //        Label varchar(16), Title varchar(64)
-    var herrorMsg = false;
-    var herror = !sql.one(`insert into ${p.user}_history values(?hash,'now',?furl,'',?title)`,p);
-    if(herror) herrorMsg = sql.errMsg;
+    var herrorMsg = false, herror=false;
+
+    if(p.skip != "true") {
+        herror = !sql.one(`insert into ${p.user}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, '', ?title )`,p);
+        if(herror) herrorMsg = sql.errMsg;
+    }
 
     //check if already saved
     var res = sql.one(`select convert( Last , 'int' ) last from ${p.user}_pages where Hash=?`, [p.hash]);
 
     if(!res)
         res = {saved:false};
-    else
+    else {
+        sql.one(`update ${p.user}_pages set LastV='now', Numvisits=Numvisits+1 where Hash=?`, [p.hash]);
         res.saved = true;
-
+    }
     res.herror=herror;
     if(herror) res.errMsg = herrorMsg;
 
@@ -1308,10 +1310,12 @@ module.exports = {
     "delete.json":  delentry,
     "check.json":   checkentry,
     "autocomp.json":autocomp,
-    "admin.json":   adminpage,
-    "search.html":  searchpage,
     "cred.json":    getcred,
+    "admin.json":   adminpage,
+    "hist.json":    histdata,
     //web pages
+    "history.html": historypage,
+    "search.html":  searchpage,
     "login.html":   login,
     "user.html":    userpage,
     "admin.html":   adminpage

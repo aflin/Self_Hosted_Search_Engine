@@ -231,7 +231,7 @@ function dosearch(skip,q) {
 			var d= new Date(0);
 			d.setUTCSeconds(parseInt(r.last));
 		
-			res.append('<div data-hash="'+r.hash+'" data-dom="'+r.dom+'" id="r'+i+'" class="resi"><span class="imgwrap">'+ricos+'<img class="fimage'+icl+'" src="home_website_start_house.svg"></span>'+
+			res.append('<div data-hash="'+r.hash+'" data-dom="'+r.dom+'" id="r'+i+'" class="resi"><span class="imgwrap">'+ricos+'<img class="fimage'+icl+'" src="images/home_website_start_house.svg"></span>'+
 			'<span class="itemwrap"><span class="abstract nowrap"><a class="url-a tar" ' + (browser.t=='f'?'style="width:calc( 100% - 165px )" ':'') + 'target="_blank" href="'+r.url+'">'+
 				escapeHtml(r.title.replace(/\s+/g,' '))+'</a><span class="timestamp">('+d.toLocaleString()+')</span></span><br><span class="abstract url-span">'+r.url+
 				'</span></span><br><span class="abstract">'+r.abstract+"</span></div>");
@@ -299,8 +299,6 @@ $(document).ready(function(){
 			enable.html("Off");
 		}
 		
-//		$('#fq').keypress(function (e) {
-//now it works with selection in autocomplete
 		$('body').on('keyup','#fq',function(e){
 			setTimeout (dosave,50);
 			if (e.which == 13) {
@@ -527,5 +525,6 @@ $(document).ready(function(){
 			});
 		});
 	});
- });
+
+});
 

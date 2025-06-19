@@ -1,0 +1,104 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background-color: #f4f4f4;
+  color: #333;
+}
+
+header {
+  background-color: #657cc2;
+  color: #fff;
+  padding: 20px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+header img {
+  max-height: 80px;
+  margin-right: 20px;
+}
+
+header .title-text {
+  text-align: left;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 2em;
+}
+
+header p {
+  margin: 5px 0 0 0;
+  font-size: 1em;
+  color: #ccc;
+}
+
+nav {
+  background-color: #222;
+  padding: 10px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+nav a {
+  color: #ccc;
+  text-decoration: none;
+  margin: 0 10px;
+}
+
+nav a:hover {
+  color: #fff;
+}
+
+footer a {
+  color: #ccc;
+  text-decoration: none;
+  margin: 0 10px;
+}
+
+footer a:hover {
+  color: #fff;
+}
+
+main {
+  padding: 40px;
+  max-width: 800px;
+  margin: auto;
+  background-color: #fff;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.search-box {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.search-box input[type="text"] {
+  width: 80%;
+  max-width: 500px;
+  padding: 10px;
+  font-size: 1em;
+}
+
+.search-box input[type="submit"] {
+  padding: 10px 20px;
+  font-size: 1em;
+  margin-left: 10px;
+}
+
+footer {
+  text-align: center;
+  padding: 20px;
+  background-color: #111;
+  color: #aaa;
+  font-size: 0.9em;
+}
+
+.userkey {font-size: 10px;}
+.userpass {width:12ch;}
+.useremail {width:12ch;}
+.usernamecl {width: 12ch;}
+.chkbx {width:3ch;}

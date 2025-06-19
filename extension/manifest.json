@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Self Hosted Search Engine",
   "description": "Automatically or manually save contents of visited pages to a self hosted full text search engine.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": "Aaron Flin",
   "permissions": [
      "tabs",
@@ -11,20 +11,20 @@
      "webRequest"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "js/background.js"
   },
   "host_permissions": [
      "<all_urls>"
   ],
   "icons": {
-    "48": "icon48.png"
+    "48": "images/icon48.png"
   }, 
   "action": {
         "default_title": "Self Hosted Search Engine",
         "default_icon": {
-          "19":"icon20.png",
-          "20":"icon20.png",
-          "38":"icon38.png"
+          "19":"images/icon20.png",
+          "20":"images/icon20.png",
+          "38":"images/icon38.png"
         },  
         "default_popup": "shsePopup.html"
   },
@@ -32,7 +32,7 @@
     [
      {
       "matches": ["<all_urls>"],
-      "js": ["browser-polyfill.min.js","jquery-3.7.1.min.js","shseContentScript.js"],
+      "js": ["js/browser-polyfill.min.js","js/jquery-3.7.1.min.js","js/shseContentScript.js"],
       "run_at": "document_start"
      }
     ]

@@ -250,10 +250,9 @@ $(document).ready(function(){
     })
     */
     var fq=$('#fq');
-        
 
     fq.devbridgeAutocomplete({
-        serviceUrl: '/apps/search/autocomp.json',
+        serviceUrl: '/apps/shse/autocomp.json',
         dataType: 'json',
         minChars: 3,
         noCache: false
@@ -280,5 +279,96 @@ $(document).ready(function(){
     $('.fimage').each(function(){
         loadImage($(this));
     });
+
+	// HISTORY
+    var dpicker = $("#datepicker");
+    if (dpicker.length) {
+        var doclick=false;
+        var lastheat;
+ 
+        function updatecal(dateText) {
+            if(!doclick) return;
+            var c=dateText.match(/(\d+)\/(\d+)\/(\d+)/);
+            //send computer localtime for chosen day in ms since epoch
+            var s = new Date(`${c[3]}-${c[1]}-${c[2]}T00:00:00`);
+            var e = new Date(`${c[3]}-${c[1]}-${c[2]}T23:59:59.999`);
+            console.log(s,e);
+            var resbox=$('#res');
+            $.post({
+                url:'/apps/shse/hist.json',
+                data:{date:dateText, start:s.getTime(), end:e.getTime()},
+                success: function(data){
+                    resbox.empty();
+                    var res=data.res.rows;
+                    var d=new Date(data.start);
+                    var datestr = s.toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    resbox.append('<p><b>'+datestr+':</b></p>');
+                    for(var i=0;i<res.length;i++){
+                        var r=res[i];
+                        var t =r.Title ? r.Title.replace(/\s+/,' ') : r.Url;
+                        var edate=new Date(r.Date);
+                        resbox.append(
+`<div data-hash="${r.Hash}" class="resi">
+    <span class="itemwrap">
+        <a class="url-a tar" href="${r.Url}" '" target="_blank">${t}</a>
+        <span class="timestamp">${edate.toLocaleTimeString()}</span>
+        <br>
+        <span class="abstract url-span">${r.Url}</span>
+    </span>
+</div>`);
+                    }
+                }
+            }).fail(function(xhr, txt, err) {
+                alert("failed to get data from server: "+txt);
+            });
+            if(lastheat) setTimeout(function(){insertheat(lastheat);},50);            
+        };
+        function insertheat(data) {
+            var max=parseInt(data.max),i=0;
+            var rows=data.rows;
+            $('td[data-handler=selectDay]').each(function(){
+                var t=$(this).find('a');
+                var v = parseInt(rows[i])/max ;
+                v *= 100.0;
+                t.css('background',`rgb(101 124 194 / ${v}%)`);
+                i++;
+            });
+        
+        }
+        function doheat(m,y){
+            $.post({
+                url:'/apps/shse/hist.json',
+                data:{startm:m, starty:y },
+                success: function(data){
+                    console.log(data);
+                    insertheat(data);
+                    lastheat=data;
+                }
+            }).fail(function(xhr, txt, err) {
+                alert("failed to get data from server: "+txt);
+            });
+            
+            
+        }
+ 
+        function monthchange(year,month) {
+            doheat(month,year);
+        }
+
+        dpicker.datepicker({
+            numberOfMonths: nMonths,
+            changeMonth: true,
+            changeYear: true,
+            maxDate: "+0D",
+            onChangeMonthYear: monthchange,
+            onSelect: updatecal
+        });
+        var firstdate=$('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
+        firstdate.click();
+        var firstmonth=parseInt($('.ui-datepicker-month').val())+1;
+        var firstyear =parseInt($('.ui-datepicker-year').val());
+        doheat(firstmonth,firstyear);
+        doclick=true;
+    };
 });
 

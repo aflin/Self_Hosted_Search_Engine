@@ -870,14 +870,13 @@ function get_page_info(){
         var posts={},iiv;
         setInterval(getfb,5000);
         grabpage=false;
-    } else if (/^https:\/\/twitter.com\//i.test(url)) {
+    /*} else if (/^https:\/\/twitter.com\//i.test(url)) {
         console.log("Got twitter");
         grabpage=false;
-        setTimeout(gettw,5000);
+        setTimeout(gettw,5000);*/
     } else if (/^https:\/\/bsky.app\/$/i.test(url)) {
-        console.log("Got twitter");
         grabpage=false;
-        setTimeout(getbs,5000);
+        setInterval(getbs,5000);
     }
 
     if(grabpage) {
@@ -897,7 +896,7 @@ function get_page_info(){
 
         postdata(
             scheck, 
-            {furl:url,title: title},
+            {furl:url, title:title, skip:skip},
             {
                 success: "Page status updated",
                 fail:    "Failed to get page status from server"
