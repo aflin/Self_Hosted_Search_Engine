@@ -453,8 +453,9 @@ function getheatstats(user) {
 }
 
 function heatdata(req,p,user) {
+    var nm = p.nMonths ? p.nMonths : nMonths;
     var sm=parseInt(p.startm), sy=parseInt(p.starty);
-    var em=sm+nMonths; ey=sy;
+    var em=sm+nm; ey=sy;
     if(em>12) {em-=12;ey++;}
 
     var startdate= `${sy}-${sm}-01`;
@@ -506,8 +507,11 @@ function heatdata(req,p,user) {
 function histdata(req) {
     var p=req.params;
     var user;
-    if(! (user=checkcred(req)) )
-        return loginredir;
+    var sres = checkeither(req);
+    if(sres.status)
+        return makeReply( {json: sres} );
+    else
+        user=sres.user;
 
     if(p.startm && p.starty)
         return heatdata(req,p,user);
@@ -533,8 +537,6 @@ function historypage(req) {
     var res, p=req.params;
     var q = p.q?p.q:'';
 
-    //var heatstats = getheatstats(user);
-
     req.put(`
 ${htmlHead}
 <script>
@@ -546,8 +548,8 @@ ${htmlTop}
 ${htmlMain}
 
 ${htmlSearch}value="${q}" ${endHtmlSearch}
-<p>Date: <div style="transform:scale 70%;" id="datepicker"></div>
-<div id="res"></div>
+<div id="datepicker"></div>
+<div id="hres"></div>
 `);
 
     return {html:`

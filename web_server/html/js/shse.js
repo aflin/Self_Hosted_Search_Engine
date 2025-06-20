@@ -282,32 +282,31 @@ $(document).ready(function(){
 
 	// HISTORY
     var dpicker = $("#datepicker");
-    if (dpicker.length) {
-        var doclick=false;
-        var lastheat;
+    var doclick=false;
+    var lastheat;
  
-        function updatecal(dateText) {
-            if(!doclick) return;
-            var c=dateText.match(/(\d+)\/(\d+)\/(\d+)/);
-            //send computer localtime for chosen day in ms since epoch
-            var s = new Date(`${c[3]}-${c[1]}-${c[2]}T00:00:00`);
-            var e = new Date(`${c[3]}-${c[1]}-${c[2]}T23:59:59.999`);
-            console.log(s,e);
-            var resbox=$('#res');
-            $.post({
-                url:'/apps/shse/hist.json',
-                data:{date:dateText, start:s.getTime(), end:e.getTime()},
-                success: function(data){
-                    resbox.empty();
-                    var res=data.res.rows;
-                    var d=new Date(data.start);
-                    var datestr = s.toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                    resbox.append('<p><b>'+datestr+':</b></p>');
-                    for(var i=0;i<res.length;i++){
-                        var r=res[i];
-                        var t =r.Title ? r.Title.replace(/\s+/,' ') : r.Url;
-                        var edate=new Date(r.Date);
-                        resbox.append(
+    function updatecal(dateText) {
+        if(!doclick) return;
+        var c=dateText.match(/(\d+)\/(\d+)\/(\d+)/);
+        //send computer localtime for chosen day in ms since epoch
+        var s = new Date(`${c[3]}-${c[1]}-${c[2]}T00:00:00`);
+        var e = new Date(`${c[3]}-${c[1]}-${c[2]}T23:59:59.999`);
+        console.log(s,e);
+        var resbox=$('#hres');
+        $.post({
+            url:'/apps/shse/hist.json',
+            data:{date:dateText, start:s.getTime(), end:e.getTime()},
+            success: function(data){
+                resbox.empty();
+                var res=data.res.rows;
+                var d=new Date(data.start);
+                var datestr = s.toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                resbox.append('<p><b>'+datestr+':</b></p>');
+                for(var i=0;i<res.length;i++){
+                    var r=res[i];
+                    var t =r.Title ? r.Title.replace(/\s+/,' ') : r.Url;
+                    var edate=new Date(r.Date);
+                    resbox.append(
 `<div data-hash="${r.Hash}" class="resi">
     <span class="itemwrap">
         <a class="url-a tar" href="${r.Url}" '" target="_blank">${t}</a>
@@ -316,59 +315,66 @@ $(document).ready(function(){
         <span class="abstract url-span">${r.Url}</span>
     </span>
 </div>`);
-                    }
                 }
-            }).fail(function(xhr, txt, err) {
-                alert("failed to get data from server: "+txt);
-            });
-            if(lastheat) setTimeout(function(){insertheat(lastheat);},50);            
-        };
-        function insertheat(data) {
-            var max=parseInt(data.max),i=0;
-            var rows=data.rows;
-            $('td[data-handler=selectDay]').each(function(){
-                var t=$(this).find('a');
-                var v = parseInt(rows[i])/max ;
-                v *= 100.0;
-                t.css('background',`rgb(101 124 194 / ${v}%)`);
-                i++;
-            });
-        
-        }
-        function doheat(m,y){
+            }
+        }).fail(function(xhr, txt, err) {
+            alert("failed to get data from server: "+txt);
+        });
+        if(lastheat) setTimeout(function(){insertheat(lastheat);},50);            
+    };
+    function insertheat(data) {
+        var max=parseInt(data.max),i=0;
+        var rows=data.rows;
+        $('td[data-handler=selectDay]').each(function(){
+            var t=$(this).find('a');
+            var v = parseInt(rows[i])/max ;
+            v *= 100.0;
+            t.css('background',`rgb(101 124 194 / ${v}%)`);
+            i++;
+        });
+
+    }
+    function doheat(m,y){
+        setTimeout(function(){
+            // in monthchange, jquery ui returns wrong month when showing
+            // multiple months and clicking on arrows where 
+            // there is no movement.  Date doesn't change until after event,
+            // hence the timeout
+            var firstmonth=parseInt($('.ui-datepicker-month').val())+1;
+            var firstyear =parseInt($('.ui-datepicker-year').val());
             $.post({
                 url:'/apps/shse/hist.json',
-                data:{startm:m, starty:y },
+                //data:{startm:, starty:y },
+                data:{startm:firstmonth, starty:firstyear },
                 success: function(data){
-                    console.log(data);
                     insertheat(data);
                     lastheat=data;
                 }
             }).fail(function(xhr, txt, err) {
                 alert("failed to get data from server: "+txt);
             });
-            
-            
-        }
+        },2);
+    }
  
-        function monthchange(year,month) {
-            doheat(month,year);
-        }
+    function monthchange(year,month) {
+        // year, month ignored.  See above.
+        doheat();
+    }
 
+    if(dpicker.length)
         dpicker.datepicker({
             numberOfMonths: nMonths,
             changeMonth: true,
             changeYear: true,
             maxDate: "+0D",
             onChangeMonthYear: monthchange,
-            onSelect: updatecal
+            onSelect: updatecal,
+            stepMonths: 3
         });
-        var firstdate=$('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
-        firstdate.click();
-        var firstmonth=parseInt($('.ui-datepicker-month').val())+1;
-        var firstyear =parseInt($('.ui-datepicker-year').val());
-        doheat(firstmonth,firstyear);
-        doclick=true;
-    };
+
+    var firstdate=$('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
+    firstdate.click();
+    doheat();
+    doclick=true;
 });
 

@@ -13,7 +13,7 @@
 .onsw { background-color: #d00; color: white; float:right;}
 .onsw-on { background-color:#0c5;} 
 #res {font-size:12px;padding:15px 10px 0px 0px;}
-#setbox {position:relative; padding:10px; margin:10px; background-color:#eee; border: 1px dotted gray; top:0px; left:0px;}
+.shbox {position:relative; padding:10px; margin:10px; background-color:#eee; border: 1px dotted gray; top:0px; left:0px;}
 #setbox td {white-space:nowrap;}
 .sall{ cursor: pointer;position: absolute;left: -15px;top: 0px;}
 .ib { display: inline-block; }
