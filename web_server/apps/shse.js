@@ -1112,7 +1112,7 @@ function checkkey(name,key) {
 function checkeither(req) {
     var p=req.params;
     var user;
-    if(p.user && p.key) {
+    if(p.user || p.key) {
         if(checkkey( p.user, p.key) )
             user=p.user;
         else

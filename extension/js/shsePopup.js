@@ -598,6 +598,7 @@ $(document).ready(function(){
                     startm:firstmonth,
                     starty:firstyear,
                     nMonths:nMonths,
+                    user: gset.user,
                     key: gset.key
                 },
                 success: function(data){
