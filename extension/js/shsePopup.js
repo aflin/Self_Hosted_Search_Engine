@@ -34,20 +34,27 @@ function escapeHtml(text) {
 function loadImage(url,img,last) {
     var t=new Image();
     t.onload=function() {
-        if(last) img[0].onload=function(){dosave(true);}
+        if(last) img[0].onload=function(){setTimeout(()=>dosave(true),500);}
         img.attr('src',url);
     }
     t.onerror=function() {
         if (last)
-            dosave(true);
+            setTimeout(()=>dosave(true),500);
     }
     t.src=url;
 }
 
+// for history calendar
+var lastcaldate;
+
 function dosave(all){
     var save={};
     save.lastq = $('#fq').val();
-    if(all) save.lastr=$('#res').html();
+    if(lastcaldate) save.lastcaldate=lastcaldate;
+    if(all) {
+        save.lastr=$('#res').html();
+        console.log(save.lastr);
+    }
     browser.storage.local.set(save);
 }
 
@@ -307,13 +314,13 @@ $(document).ready(function(){
             }
         });
         if (window.safari) { 
-                fq.blur();
-                safari.application.addEventListener("popover", function(){
-                        setTimeout(function(){
-                                $('.autocomplete-suggestions').hide();
-                                },250);
-                        },true);
-                }
+            fq.blur();
+            safari.application.addEventListener("popover", function(){
+                setTimeout(function(){
+                    $('.autocomplete-suggestions').hide();
+                },250);
+            },true);
+        }
 
         $('#search').click(function(){
             if (user) dosearch();
@@ -362,6 +369,7 @@ $(document).ready(function(){
             //    mextra='</tr><tr style="white-space:nowrap">'
             //}
             $('#res').hide();
+            $('#histbox').remove();
             $('body').append(
             `<div id="setbox" class="shbox">
                 <table style="margin:auto">
@@ -530,6 +538,8 @@ $(document).ready(function(){
     var nMonths=3,doclick=false,lastheat;
     function updatecal(dateText) {
         if(!doclick) return;
+        lastcaldate=dateText;
+        dosave();
         var c=dateText.match(/(\d+)\/(\d+)\/(\d+)/);
         //send computer localtime for chosen day in ms since epoch
         var s = new Date(`${c[3]}-${c[1]}-${c[2]}T00:00:00`);
@@ -622,6 +632,7 @@ $(document).ready(function(){
             $('#res').show();
         } else {
             $('#res').hide();
+            $('#setbox').remove();
             $('body').append(
              `<div id="histbox" class="shbox">
                <div id="datepicker"></div>
@@ -640,6 +651,10 @@ $(document).ready(function(){
             firstdate.click();
             doheat();
             doclick=true;
+            if(gset.lastcaldate) {
+                $('#datepicker').datepicker("setDate", gset.lastcaldate);
+                updatecal(gset.lastcaldate);
+            }
         }
     });
 
