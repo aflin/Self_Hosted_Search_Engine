@@ -166,17 +166,7 @@ var serverConf = {
                                      "/images": working_directory + '/images',
                                      myfunc.html: {module: working_directory + '/myfuncmod.js'}
                                  }                                                                 */
-    appendMap:             {
-                               "/" : function(req) {
-                                       return {    
-                                           html: 
-                                               "<html><body><h1>302 Moved Temporarily</h1>"+
-                                               '<p>Document moved <a href="login.html">here</a></p></body></html>',
-                                           status:302,
-                                           headers: { "location": "/apps/shse/login.html"}
-                                       }
-                                     }
-                           },
+    //appendMap:           undefined,
 
     /* appendProcTitle     Bool.  Whether to append ip:port to process name as seen in ps */
     //appendProcTitle:     false,
