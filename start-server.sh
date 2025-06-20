@@ -12,6 +12,7 @@ WDIR="${SDIR}/web_server"
 CERT="${WDIR}/self-cert.pem"
 KEY="${WDIR}/self-key.pem"
 CONF="${WDIR}/self-cert.conf"
+DATADIR="${WDIR}/data";
 
 if [ "`whoami`" != "root" ] ; then
     echo "this tool must be run with sudo or as root"
@@ -34,6 +35,10 @@ else
 fi
 
 RAMPARTDIR=$(dirname "${RAMPART}")
+
+if [ ! -e $DATADIR ]; then
+    mkdir $DATADIR
+fi
 
 if [ ! -e ${CERT} ] ; then
     echo "Creating self signed certificate request"
