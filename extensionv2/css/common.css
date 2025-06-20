@@ -1,4 +1,4 @@
-
+body {min-width: 550px;}
 #showrm {position:relative;}
 .np { cursor:pointer;}
 .itemwrap{ width: calc( 100% - 70px); position: relative;display: inline-block;}
