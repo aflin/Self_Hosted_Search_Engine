@@ -1,7 +1,7 @@
 #!/bin/bash
 
 die(){
-    echo $1;
+    echo -e "$1";
     exit 1;
 }
 
@@ -18,7 +18,22 @@ if [ "`whoami`" != "root" ] ; then
     exit 1;
 fi
 
+if [ -e "${SDIR}/rampart/bin/rampart" ] ; then
+    RAMPART="${SDIR}/rampart/bin/rampart"
+fi
 
+if [ "$RAMPART" != "" ]; then
+    if [ ! -e $RAMPART ] ; then 
+        die "$RAMPART does not exist";
+    fi
+else
+    RAMPART=`which rampart`;
+    if [ "$RAMPART" == "" ]; then
+        die "Cannot find rampart executable\nYou can provide it by running with:\n  RAMPART='path/to/rampart' start-server.sh";
+    fi
+fi
+
+RAMPARTDIR=$(dirname "${RAMPART}")
 
 if [ ! -e ${CERT} ] ; then
     echo "Creating self signed certificate request"
@@ -70,6 +85,8 @@ chown -R nobody . || {
 }
 
 echo "Starting web server"
-rampart web_server/web_server_conf.js || {
+#make sure texislockd is running (can fail if not in path)
+$RAMPARTDIR/texislockd
+$RAMPART web_server/web_server_conf.js || {
     die "Server Start Failed"
 }

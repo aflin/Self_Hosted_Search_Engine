@@ -527,7 +527,7 @@ $(document).ready(function(){
     });
 
     // History
-    var nMonths=3,doclick=false;
+    var nMonths=3,doclick=false,lastheat;
     function updatecal(dateText) {
         if(!doclick) return;
         var c=dateText.match(/(\d+)\/(\d+)\/(\d+)/);
@@ -542,6 +542,7 @@ $(document).ready(function(){
                 date:dateText, 
                 start:s.getTime(), 
                 end:e.getTime(),
+                user:gset.user,
                 key: gset.key
             },
             success: function(data){
@@ -570,6 +571,7 @@ $(document).ready(function(){
         });
         if(lastheat) setTimeout(function(){insertheat(lastheat);},50);            
     };
+
     function insertheat(data) {
         var max=parseInt(data.max),i=0;
         var rows=data.rows;

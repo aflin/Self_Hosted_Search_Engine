@@ -1112,17 +1112,18 @@ function checkkey(name,key) {
 function checkeither(req) {
     var p=req.params;
     var user;
-    if(! checkkey( p.user, p.key) ) {
-        if(req.cookies.sessid) {
-            user=checkcred(req);
-            if(!user)
-                return {status:'bad session'};
-        }
-        
-        if(!user)
+    if(p.user && p.key) {
+        if(checkkey( p.user, p.key) )
+            user=p.user;
+        else
             return {status:'bad key'};
+    }
+    else if (req.cookies.sessid) {
+        user=checkcred(req);
+        if(!user)
+            return {status:'bad session'};
     } else {
-        user=p.user;
+        return {status:'not logged in or failed to provide user/key'}
     }
     return {user:user};
 }
