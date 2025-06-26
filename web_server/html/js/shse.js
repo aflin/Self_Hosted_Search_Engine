@@ -251,12 +251,15 @@ $(document).ready(function(){
     */
     var fq=$('#fq');
 
-    fq.devbridgeAutocomplete({
-        serviceUrl: '/apps/shse/autocomp.json',
-        dataType: 'json',
-        minChars: 3,
-        noCache: false
-    });  
+    if(fq.length && fq.devbridgeAutocomplete)
+    {
+        fq.devbridgeAutocomplete({
+            serviceUrl: '/apps/shse/autocomp.json',
+            dataType: 'json',
+            minChars: 3,
+            noCache: false
+        });  
+    }
 
     $('body').on('keyup','#fq',function(e){
         if (window.safari) { 
@@ -361,7 +364,7 @@ $(document).ready(function(){
         doheat();
     }
 
-    if(dpicker.length)
+    if(dpicker.length) {
         dpicker.datepicker({
             numberOfMonths: nMonths,
             changeMonth: true,
@@ -372,9 +375,10 @@ $(document).ready(function(){
             stepMonths: 3
         });
 
-    var firstdate=$('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
-    firstdate.click();
-    doheat();
-    doclick=true;
+        var firstdate=$('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
+        firstdate.click();
+        doheat();
+        doclick=true;
+    }
 });
 

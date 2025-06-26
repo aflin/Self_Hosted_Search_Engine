@@ -9,7 +9,7 @@ the server can be started by running:
 Help:
   ./web_server_conf.js help
   usage:
-    rampart web_server_conf.js [start|stop|restart|letssetup|status|dump|help]
+    rampart web_server_conf.js [start|stop|restart|letssetup|status|dump|newcert|help]
         start     -- start the http(s) server
         stop      -- stop the http(s) server
         restart   -- stop and restart the http(s) server
@@ -103,10 +103,10 @@ var serverConf = {
     secure:                true,
 
     /* sslKeyFile          String. If https, the ssl/tls key file location   */
-    sslKeyFile:            working_directory + '/self-key.pem',
+    sslKeyFile:            working_directory + '/certs/shse-key.pem',
 
     /* sslCertFile         String. If https, the ssl/tls cert file location   */
-    sslCertFile:           working_directory + '/self-cert.pem',
+    sslCertFile:           working_directory + '/certs/shse-cert.pem',
 
     /* developerMode       Bool.   Whether JavaScript errors result in 500 and return a stack trace.
                                    Otherwise errors return 404 Not Found                             */
@@ -259,6 +259,159 @@ function myloggingfunc_alt (logdata, logline) {
 }
 */
 
+/* A helper to restart with a new certificate */
+if(process.argv[2] == "newcert") {
+    rampart.globalize(rampart.utils);
+
+    load.curl;
+    load.server;
+
+    var testport=22375;
+
+    var cf=process.argv[3];
+    var kf=process.argv[4];
+    if(!cf || !kf) {
+        printf("newcert requires the names (without path) of the cert file and the key file (in that order)\n  e.g. rampart web_server_conf.js newcert mycert.pem privkey.pem\n");
+        process.exit(1);
+    }
+    var cstat = stat(working_directory + '/certs/' + cf);
+    if(!cstat) {
+        printf("newcert: '%s' not found in the './certs' directory\n", cf);
+        process.exit(1);
+    }
+    var kstat = stat(working_directory + '/certs/' + kf);
+    if(!kstat) {
+        printf("newcert: '%s' not found in the './certs' directory\n", kf);
+        process.exit(1);
+    }
+
+    //check modulus matches
+    var cmod = shell('openssl x509 -noout -modulus -in ' + working_directory +'/certs/'+cf);
+    var kmod = shell('openssl rsa -noout -modulus -in ' + working_directory + '/certs/'+kf);
+    if (kmod.stderr) {
+        fprintf(stderr,"%s openssl error: %s\n", kf, kmod.stderr);
+        process.exit(1);
+    }
+    if (cmod.stderr) {
+        fprintf(stderr,"%s openssl error: %s\n", cf, cmod.stderr);
+        process.exit(1);
+    }
+
+    if (cmod.stdout != kmod.stdout) {
+        fprintf(stderr, "key and cert do not match (different modulus)\n");
+        process.exit(1);
+    }
+
+    // check permissions
+    var iam = shell('whoami').stdout.trim();
+    var servuser=iam;
+    var cwrperm = cstat.permissions.charAt(7);
+
+    if(servuser=='root')
+        servuser = serverConf.user?serverConf.user:'nobody';
+
+    if(cstat.owner != servuser) {
+        if(iam=='root') {
+            shell(`chown ${servuser} ${working_directory}/certs/*`);
+            shell(`chmod 644 ${working_directory}/certs/${cf}`);
+        } else {
+            if(cwrperm != 'r') {
+                fprintf(stderr,"newcert: '%s' is not ownend by %s and is not world readable\n", cf, cstat.owner);
+                process.exit(1);
+            }
+        }
+    }
+
+    if(kstat.owner != servuser) {
+        if(iam=='root') {
+            shell(`chown ${servuser} ${working_directory}/certs/*`);
+            shell(`chmod 600 ${working_directory}/certs/${kf}`);
+        } else {
+            fprintf(stderr,"newcert: '%s' is not ownend by %s\n", kf, kstat.owner);
+            process.exit(1);
+        }
+    }
+    if(kstat.permissions != "-rw-------") {
+        fprintf(stderr,"newcert: '%s' has permissions %s, should be '-rw-------'\n", kf, kstat.owner);
+        process.exit(1);
+    }
+
+    var lcert=serverConf.sslCertFile, lkey=serverConf.sslKeyFile;
+    if(stat(lcert))
+        rename(lcert, lcert+'.old');
+    if(stat(lkey))
+        rename(lkey, lkey+'.old');
+
+    symlink(cf,lcert);
+    symlink(kf,lkey);
+
+    //make a test server to see if certs are working
+    var pid = server.start({
+        bind: [ "127.0.0.1:"+testport ],
+        daemon:true,
+        secure:true,
+        sslKeyFile: lkey,
+        sslCertFile: lcert,
+        user: servuser,
+        log:  true,
+        errorLog: "/dev/null",
+        accessLog: "/dev/null",
+        map :
+        {
+            "/":   function(req){ return{txt:"ok"}; }
+        }
+    });
+    var startfail=false;
+
+    sleep(1);
+
+    if(!kill(pid,0)) {
+        startfail=true;
+        fprintf(stderr,"Server failed to start with new certificate and key\n");
+    } else {
+        var res=curl.fetch('https://127.0.0.1:'+testport,{insecure:true});
+        if(res.text != 'ok') {
+            fprintf(stderr, "Server failed to respond: %s\n", res.statusText);
+            startfail=true;
+        }
+    }
+
+    kill(pid,15);
+
+    if(startfail) {
+        rmFile(lcert);
+        rmFile(lkey);
+        rename(lcert+'.old', lcert);
+        rename(lkey+'.old', kcert);
+        process.exit(1);
+    }
+
+    rmFile(lcert + '.old');
+    rmFile(lkey + '.old');
+
+    var spid = parseInt(readFile( working_directory + '/server.pid', true));
+
+    if(serverConf.monitor) {
+
+        var pid=daemon();
+        if(pid>0) {
+            printf("Server should restart in about 15 seconds\n");
+        } else if (pid==0) {
+            sleep(2);
+            kill(spid,15);
+            sleep(1);
+            kill(spid,9);
+        } else {
+            fprintf(stderr,"Error forking to restart server: %d\n",pid);
+        }
+
+//        exec('nohup',{background:true}, 'bash', '-c', `sleep 2; kill ${spid}`)
+//        printf("Server should restart in about 15 seconds\n");
+    } else {
+        printf("Please manually restart the server\n");
+    }
+    process.exit(0);
+}
 
 /* **************************************************** *
  *  process command line options and start/stop server  *

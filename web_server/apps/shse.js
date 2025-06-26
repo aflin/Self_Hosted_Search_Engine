@@ -24,7 +24,7 @@ function tableExists(tbname) {
 
 function makeSystemTables() {
     if(!tableExists("accounts")) {
-        sql.exec(`create table accounts 
+        sql.exec(`create table accounts
         ( Id COUNTER, Acctid varchar(16), Type char(1), Acctinfo varchar(64)
         );`);
         if(!tableExists('accounts')) {
@@ -52,7 +52,7 @@ function makeSystemTables() {
     */
 
     if(!tableExists("sessions")) {
-        sql.exec(`create table sessions 
+        sql.exec(`create table sessions
         ( Acctid varchar(16), Sessid varchar(48), Expires date
         );`);
         if(!tableExists('sessions')) {
@@ -97,8 +97,8 @@ function makeUserTables(tbname) {
 
     // turn indexmeter off eventually
     if(!indexExists(`${tbname}_pages_Text_ftx`)) {
-        sql.exec(`create fulltext index ${tbname}_pages_Text_ftx on ${tbname}_pages(Text) 
-            WITH WORDEXPRESSIONS ` + 
+        sql.exec(`create fulltext index ${tbname}_pages_Text_ftx on ${tbname}_pages(Text)
+            WITH WORDEXPRESSIONS ` +
             ```('[\alnum\x80-\xFF]{2,99}', '[\alnum\x80-\xFF$<>%@\-_+]{2,99}')INDEXMETER 'on';```
         );
         if(!indexExists(`${tbname}_pages_Text_ftx`)) {
@@ -108,7 +108,7 @@ function makeUserTables(tbname) {
     }
 
     if(!tableExists(`${tbname}_history`)) {
-        sql.exec(`create table ${tbname}_history (Hash byte(20), Date date, Day dword, 
+        sql.exec(`create table ${tbname}_history (Hash byte(20), Date date, Day dword,
                   Url varchar(128), Label varchar(16), Title varchar(64));`);
         if(!tableExists(`${tbname}_history`)) {
             fprintf(stderr, `error creating ${tbname}_history: %s\n`, sql.errMsg);
@@ -116,8 +116,8 @@ function makeUserTables(tbname) {
         }
     }
 
-    
-    if(!indexExists(`${tbname}_history_Hash_x`)) {   
+
+    if(!indexExists(`${tbname}_history_Hash_x`)) {
         sql.exec(`create index ${tbname}_history_Hash_x on ${tbname}_history(Hash);`);
         if(!indexExists(`${tbname}_history_Hash_x`)) {
             fprintf(stderr, `error creating ${tbname}_history_Hash_x: %s\n`, sql.errMsg);
@@ -125,7 +125,7 @@ function makeUserTables(tbname) {
         }
     }
 
-    if(!indexExists(`${tbname}_history_Day_x`)) {   
+    if(!indexExists(`${tbname}_history_Day_x`)) {
         sql.exec(`create index ${tbname}_history_Day_x on ${tbname}_history(Day);`);
         if(!indexExists(`${tbname}_history_Day_x`)) {
             fprintf(stderr, `error creating ${tbname}_history_Day_x: %s\n`, sql.errMsg);
@@ -133,7 +133,7 @@ function makeUserTables(tbname) {
         }
     }
 
-    if(!indexExists(`${tbname}_history_Date_x`)) {   
+    if(!indexExists(`${tbname}_history_Date_x`)) {
         sql.exec(`create index ${tbname}_history_Date_x on ${tbname}_history(Date);`);
         if(!indexExists(`${tbname}_history_Date_x`)) {
             fprintf(stderr, `error creating ${tbname}_history_Date_x: %s\n`, sql.errMsg);
@@ -142,14 +142,14 @@ function makeUserTables(tbname) {
     }
 
     if(!tableExists(`${tbname}_heatstats`)) {
-        sql.exec(`create table ${tbname}_heatstats (Day dword, Cnt dword)`); 
+        sql.exec(`create table ${tbname}_heatstats (Day dword, Cnt dword)`);
         if(!tableExists(`${tbname}_heatstats`)) {
             fprintf(stderr, `error creating ${tbname}_heatstats: %s\n`, sql.errMsg);
             return {error: sprintf(`error creating ${tbname}_heatstats: %s`, sql.errMsg)};
         }
     }
 
-    if(!indexExists(`${tbname}_heatstats_Day_x`)) {   
+    if(!indexExists(`${tbname}_heatstats_Day_x`)) {
         sql.exec(`create index ${tbname}_heatstats_Day_x on ${tbname}_heatstats(Day);`);
         if(!indexExists(`${tbname}_heatstats_Day_x`)) {
             fprintf(stderr, `error creating ${tbname}_heatstats_Day_x: %s\n`, sql.errMsg);
@@ -198,6 +198,28 @@ var htmlTop=`
     </div>
   </nav>
 `;
+
+var adminHtmlTop=`
+  <header>
+    <img src="/images/logo.png" alt="Self Hosted Search Engine Logo">
+    <div class="title-text">
+      <h1>Self Hosted Search Engine</h1>
+      <p>Search your web sessions, your way. Privately. Locally.</p>
+    </div>
+  </header>
+
+  <nav>
+    <div>
+      <a href="/apps/shse/admin.html">Home</a>
+      <a href="/apps/shse/certs.html">Certificates</a>
+      <a href="#">Docs</a>
+      <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
+    </div>
+    <div>
+      <a href="login.html?logout=1">Log out</a>
+    </div>
+  </nav>
+`;
 var htmlMain="<main>";
 var htmlSearch=`
     <script src="/js/jquery.autocomplete.min.js"></script>
@@ -215,8 +237,8 @@ var htmlAbout=`
     <section>
       <h2>About</h2>
       <p>
-        Self Hosted Search Engine is a lightweight, privacy-respecting search platform 
-        that you can run on your own hardware. Designed for developers, archivists, and anyone 
+        Self Hosted Search Engine is a lightweight, privacy-respecting search platform
+        that you can run on your own hardware. Designed for developers, archivists, and anyone
         who wants full control over their indexed data.
       </p>
     </section>
@@ -249,7 +271,7 @@ var endHtmlBody=`
 
 
 var loginredir = {
-    html: 
+    html:
         "<html><body><h1>302 Moved Temporarily</h1>"+
         '<p>Document moved <a href="login.html">here</a></p></body></html>',
     status:302,
@@ -260,7 +282,7 @@ var loginredir = {
 function checkcred(req, require_admin) {
     var now;
 
-    if(!req.cookies.sessid) { 
+    if(!req.cookies.sessid) {
         return false;
     }
 
@@ -293,7 +315,7 @@ function dosearch(q,u,s) {
 
     if(s>90)
         sql.set({likeprows: s+100});
-    //  image, url, last, hash, dom, title, abstract 
+    //  image, url, last, hash, dom, title, abstract
     var res=sql.exec(`select bintohex(Hash) hash, convert( Last , 'int' ) last, Dom dom, Url url, Image image, Title title,
         Text abstract from ${u}_pages where Text likep ?`,
         [q], {skipRows: s, includeCounts:true }
@@ -328,8 +350,8 @@ ${htmlSearch}value="${q}" ${endHtmlSearch}
     if(p.q) {
         res=dosearch(p.q,user,skip);
         var total = res.countInfo.indexCount;
-        var cntinfo = res.rowCount ? 
-                      `Results ${skip+1}-${skip+res.rowCount} of ${total}` : 
+        var cntinfo = res.rowCount ?
+                      `Results ${skip+1}-${skip+res.rowCount} of ${total}` :
                       `no ${total?'more ':''}results for ${q}`;
 //req.printf("<pre>%H</pre>", sprintf("\n%3J\n", res) );
         req.put(`
@@ -364,7 +386,7 @@ ${htmlSearch}value="${q}" ${endHtmlSearch}
 			req.put('<div data-hash="'+r.hash+'" data-dom="'+r.dom+'" id="r'+i+'" class="resi"><span class="imgwrap">'+ricos+
                 '<img class="fimage'+icl+'" src="'+ico+'"'+
                 (favico?' data-favico="'+favico+'"':'') + '></span>'+
-                '<span class="itemwrap"><span class="abstract nowrap"><a class="url-a tar" ' + 
+                '<span class="itemwrap"><span class="abstract nowrap"><a class="url-a tar" ' +
                 /* (browser.t=='f'?'style="width:calc( 100% - 165px )" ':'') + */
                 'target="_blank" href="'+r.url+'">'+
                 sprintf("%H",r.title.replace(/\s+/g,' '))+'</a><span class="timestamp">('+d.toLocaleString()+
@@ -407,7 +429,7 @@ ${htmlSearch}value="${q}" ${endHtmlSearch}
     skip+=10;
     if(skip<total)
         pag+=`<span class="npag"><a href="${surl}&sk=${skip}">Next</a></span>`;
-    
+
     return {html:`
 <p><center>${pag}</center></p>
 ${endHtmlMain}
@@ -519,13 +541,13 @@ function histdata(req) {
     var d=autoScanDate(p.date + ' ' + p.off);
     var start = dateFmt('%Y-%m-%d', d.date);
     var end = start + ' 23:59:59';
-    
+
     start+=' 00:00:00';
 
 //    return {txt: `select * from ${user}_history where Date >= ? and Date < ? order by Date; ${parseInt(p.start)/1000} ${(parseInt(p.end)+1)/1000}`}
 
     var res=sql.exec(`select * from ${user}_history where Date >= ? and Date < ? order by Date;`,
-              {maxRows: -1},[parseInt(p.start)/1000, (parseInt(p.end)+1)/1000]); 
+              {maxRows: -1},[parseInt(p.start)/1000, (parseInt(p.end)+1)/1000]);
 
     return({json:{res:res, start:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',start), end:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',end)}});
 }
@@ -567,7 +589,7 @@ function gethash(salt, pass) {
 }
 
 function getusers(req) {
-    var res = sql.exec("select Acctid, Acctinfo.$.email, Acctinfo.$.passhash from accounts",{returnType:'array'});   
+    var res = sql.exec("select Acctid, Acctinfo.$.email, Acctinfo.$.passhash from accounts",{returnType:'array'});
     return {json:res.rows};
 }
 
@@ -586,7 +608,7 @@ function deluser(user) {
     sql.one("delete from accounts where Acctid=?",[user]);
     sql.one(`drop table ${user}_pages`);
     sql.one(`drop table ${user}_history`);
-    
+
     return true;
 }
 
@@ -661,7 +683,7 @@ function updateuser(req) {
 
         // see: https://rampart.dev/docs/sql-server-funcs.html#json-merge-patch
         res=sql.exec("update accounts set Acctinfo=json_merge_patch(Acctinfo,?) where Acctid=?", [patch, u[i]]);
-        
+
         if(!res.rowCount)
             err+=`Failed to update account '${u[i]}'<br>`;
         else {
@@ -677,6 +699,425 @@ function updateuser(req) {
     ret.updates=updates;
     return {json:ret};
 }
+
+function findcerts() {
+    var certs={}, mods={}, activecert, activekey;
+    var cdir = serverConf.serverRoot+'/certs';
+    readDir(cdir).forEach(function(f) {
+        var ls=lstat(cdir+'/'+f);
+        if(f=='shse-cert.pem')
+            activecert=ls.link
+        else if(f=='shse-key.pem')
+            activekey=ls.link;
+        else if (/-cert.pem/.test(f)) {
+            var cinfo = shell('openssl x509 -noout -subject -issuer -dates -modulus -in ' + serverConf.serverRoot+'/certs/'+f);
+            if(cinfo.stderr != "") {
+                certs[f]={invalid:true,msg:cinfo.stderr,file:serverConf.serverRoot+'/certs/'+f }
+            } else {
+                var tmp, tmp1, out='\n'+cinfo.stdout;
+                var subject = out.match(/\nsubject=([^\n]+)/);
+                if(subject && subject.length>1) {
+                    tmp=subject[1];
+                    subject={};
+                    tmp1=tmp.match(/O\s*=\s*([^,]+)/);
+                    if(tmp1 && tmp1.length>1)
+                        subject.org=tmp1[1];
+                    tmp1=tmp.match(/CN\s*=\s*([^,]+)/);
+                    if(tmp1 && tmp1.length>1)
+                        subject.cn=tmp1[1];
+                } else
+                    subject=null;
+
+                var issuer = out.match(/\nissuer=([^\n]+)/);
+                console.log(issuer);
+                if(issuer && issuer.length>1) {
+                    tmp=issuer[1];
+                    issuer={};
+                    tmp1=tmp.match(/O\s*=\s*([^,]+)/);
+                    if(tmp1 && tmp1.length>1)
+                        issuer.org=tmp1[1];
+                    tmp1=tmp.match(/CN\s*=\s*([^,]+)/);
+                    if(tmp1 && tmp1.length>1)
+                        issuer.cn=tmp1[1];
+                } else
+                    issuer=null;
+
+                var start=out.match(/\nnotBefore=([^\n]+)/);
+                if(start && start.length>1) {
+                    start=autoScanDate(start[1]);
+                    if(start.date)
+                        start=start.date;
+                    else
+                        start=null;
+                } else
+                    start=null;
+
+                var end=out.match(/\nnotAfter=([^\n]+)/);
+                if(end && end.length > 1) {
+                    end=autoScanDate(end[1]);
+                    if(end.date)
+                        end=end.date;
+                    else
+                        end=null;
+                } else
+                    end=null;
+
+                var mod=out.match(/\nModulus=([^\n]+)/);
+                if(mod && mod.length > 1) {
+                    mod=mod[1];
+                } else
+                    mod=null;
+
+                certs[f]={subject:subject, issuer:issuer, start:start, end:end, mod: mod, cinfo:cinfo, file:f}
+                if(mods[mod])
+                    certs[f]=Object.assign(certs[f],mods[mod]);
+                mods[mod]=certs[f];
+            }
+        } else if (/-key.pem/.test(f)) {
+            var kinfo = shell('openssl rsa -noout -modulus -in ' + serverConf.serverRoot+'/certs/'+f);
+            if(kinfo.stderr=='') {
+                out = '\n' + kinfo.stdout;
+                mod=out.match(/\nModulus=([^\n]+)/);
+                if(mod && mod.length > 1) {
+                    mod=mod[1];
+                    if(!mods[mod]) mods[mod]={};
+                    mods[mod].key=f;
+                }
+            }
+        }
+
+    });
+
+    if(certs[activecert])
+        certs[activecert].active=true;
+
+//    certs.activecert=activecert;
+//    certs.activekey=activekey;
+    return certs;
+}
+
+
+function activatecert(req) {
+    var p=req.params;
+
+    var res = shell(`${process.installPathExec} ${serverConf.serverRoot}/web_server_conf.js newcert ${p.cfile} ${p.kfile}`);
+    if(res.stderr.length)
+        return {json:{response:{msg:res.stderr, error:true}}}
+    else
+        return {json:{response:{msg:res.stdout}}}
+}
+
+
+function checkcert(req) {
+    var p=req.params;
+    var mod, subject, res, error=false, msg;
+
+    if(p.type=='cfile') {
+        res= shell('openssl x509 -noout -subject -modulus', {stdin: p.file});
+
+        var tmp, tmp1, out='\n'+res.stdout;
+        var subject = out.match(/\nsubject=([^\n]+)/);
+        if(subject && subject.length>1) {
+            tmp=subject[1];
+            subject={};
+            tmp1=tmp.match(/O\s*=\s*([^,]+)/);
+            if(tmp1 && tmp1.length>1)
+                subject.org=tmp1[1];
+            tmp1=tmp.match(/CN\s*=\s*([^,]+)/);
+            if(tmp1 && tmp1.length>1)
+                subject.cn=tmp1[1];
+        } else {
+            subject=undefined;
+            error=true;
+        }
+        if(!error) {
+            mod=out.match(/\nModulus=([^\n]+)/);
+            if(mod && mod.length > 1) {
+                mod=mod[1];
+                msg="Certificate Valid";
+            } else {
+                error=true;
+                mod=undefined;
+                msg="Invalid Certificate";
+            }
+            msg="Certificate Valid";
+        }
+        else
+            msg="Invalid Certificate";
+
+    } else if (p.type=='kfile') {
+        res=shell('openssl rsa -noout -modulus', {stdin: p.file});
+        var out='\n'+res.stdout;
+        if(!error) {
+            mod=out.match(/\nModulus=([^\n]+)/);
+            if(mod && mod.length > 1) {
+                mod=mod[1];
+                msg="Private Key Valid";
+            } else {
+                error=true;
+                mod=undefined;
+                msg="Invalid Private Key";
+            }
+        }
+        else
+            msg="Invalid Private Key";
+    }
+    return {json: {response: {error:error, msg:msg, modulus:mod, subject:subject}}};
+}
+
+function uploadcert(req){
+    var msg, error=false, f=req.params.files;
+
+    if(!f || !f.cfile || !f.kfile)
+        return {json: {response: {error:true,msg:"missing files parameters"}}};
+
+    var cname = serverConf.serverRoot + '/certs/' + dateFmt('%Y-%m-%d_%H:%M:%S_shse-cert.pem');
+    var kname = serverConf.serverRoot + '/certs/' + dateFmt('%Y-%m-%d_%H:%M:%S_shse-key.pem');
+
+    try {
+        fprintf(cname,'%s',f.cfile);
+        fprintf(kname,'%s',f.kfile);
+        chmod(kname, 0600);
+        msg="ok";
+    } catch(e) {
+        error=true;
+        msg=e.message
+    }
+    return {json: {response: {error:error, msg:msg}}};
+}
+
+function certpage(req){
+    if(!checkcred(req, true)) {
+        return loginredir;
+    }
+
+    // ajax json requests
+    switch (req.params.action) {
+        case 'check':
+            return checkcert(req);
+        case 'upload':
+            return uploadcert(req);
+        case 'del':
+            return delusers(req);
+        case 'activate':
+            return activatecert(req);
+    }
+
+    // direct html request
+    var jsonpage = req.path.path.replace(/html$/,'json');
+
+    var certs=findcerts();
+
+    var keys = Object.keys(certs);
+
+    var o = '<table class="ctb"><tr><th></th><th>Issuer</th><th>Cname</th><th>Valid Dates</th><th>Filename</th><th>Status</th></tr>';
+
+    for (var i=0;i<keys.length;i++) {
+        var acert=certs[keys[i]];
+        if (acert.active)
+            o+=`<tr style="font-weight:bold;"><td><input class="actv" type=radio id="${acert.file}" data-key="${acert.key}" name="cfile"></td><td>${acert.issuer.org}</td><td>${acert.subject.cn}</td><td>`+
+                dateFmt("%b %d %Y -",acert.start) + dateFmt(" %b %d %Y",acert.end) + `</td><td>${acert.file}</td><td>Active</td></tr>`
+    }
+    for (var i=0;i<keys.length;i++) {
+        var acert=certs[keys[i]];
+        if (!acert.active)
+            o+=`<tr><td><input type=radio id="${acert.file}" data-key="${acert.key}" name="cfile"></td><td>${acert.issuer.org}</td><td>${acert.subject.cn}</td><td>`+
+                dateFmt("%b %d %Y -",acert.start) + dateFmt(" %b %d %Y",acert.end) + `</td><td>${acert.file}</td><td>Inactive</td></tr>`
+    }
+
+    o+='</table><br><button class="cbut" id="activate">Activate</button><button class="cbut" id="upload">Upload New</button><br>';
+
+    var adminscr = `
+    \$(document).ready(function(){
+        var act=\$('#activate');
+        var upl=\$('#upload');
+
+        \$('input[name="cfile"]').on('change',function(e) {
+console.log(\$(this));
+            if(\$(this).hasClass('actv'))
+                act.addClass('bdisabled')[0].disabled=true;
+            else
+                act.removeClass('bdisabled')[0].disabled=false;
+        });
+
+
+        function dialogmsg(msg) {
+            if(!\$("#dialog-msg").length)
+                \$('body').append(\`
+<div id="dialog-msg" title="Alert Message">
+  <p><span class="ui-icon ui-icon-alert" style="float:left; margin:12px 12px 20px 0;"></span><span id="dialog-msg-span">\${msg}</span></p>
+</div>\`);
+            else
+                \$("#dialog-msg-span").html(msg);
+            \$("#dialog-msg").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                buttons: {
+                    "OK": function() {
+                        \$(this).dialog("close");
+                    }
+                }
+            });
+        }
+
+        function countdownRefresh(secs) {
+            if(!\$("#dialog-msg").length)
+                \$('body').append(\`
+<div id="countdown" title="Server Restart" style="display: none;">
+    <p>Refreshing page in <span id="countdown-display"></span> seconds.</p>
+</div>\`);
+
+        \$("#countdown").dialog({
+            modal: true,
+            width: 400,
+            height: 200,
+            open: function(event, ui) {
+                let timeLeft = secs; // Initial countdown time in seconds
+                \$("#countdown-display").text(timeLeft);
+
+                const countdownInterval = setInterval(function() {
+                    timeLeft--;
+                    \$("#countdown-display").text(timeLeft);
+
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        \$("#countdown-display").text("0");
+                        setTimeout(function() {
+                            \$("#countdown").dialog("close");
+                            location.reload(true);
+                        }, 500);
+                    }
+                }, 1000);
+            }
+        });
+
+        }
+
+        act.click(function(e){
+            var cfile = \$('input[name="cfile"]:checked').attr('id');
+            var kfile = \$('input[name="cfile"]:checked').attr('data-key');
+
+            if(!\$("#dialog-activate-confirm").length)
+                \$('body').append(\`
+<div id="dialog-activate-confirm" title="Activate selected certificate?">
+<p><span class="ui-icon ui-icon-alert" style="float:left; margin:12px 12px 20px 0;"></span>The selected certificate will be made active and the server will restart. Proceed?</p>
+</div>\`);
+
+            \$("#dialog-activate-confirm").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                buttons: {
+                    "Update and Restart": function() {
+                        \$.post('${jsonpage}', {action:"activate", cfile:cfile, kfile:kfile}, function(data) {
+                            if(!data.response.error)
+                                countdownRefresh(15);
+                            else
+                                dialogmsg(\`<h3>Server Restart Error</h3><p>\${data.response.msg}</p>\`);
+                        }).fail(function(){
+                            dialogmsg(\`<h3>Server Restart Error</h3><p>Error Communicating with server</p>\`);
+                        });
+                        \$(this).dialog("close");
+                    },
+                    Cancel: function() {
+                        \$(this).dialog("close");
+                    }
+              }
+            });
+        });
+        upl.click(function(e){
+            \$('body').append(\`
+<div id="dialog-upload" title="Load Certificate and Key">
+<table class="tclear"><tr>
+<td>Certificate:</td><td><input accept=".pem" type="file" id="cfile" class="ufile" title="Choose Cert"/></td><td id="cfile-msg"></td></tr>
+</tr><tr>
+<td>Private Key:</td><td><input accept=".pem" type="file" id="kfile" class="ufile" title="Choose Key"/></td><td id="kfile-msg"></td></tr>
+</table>
+</div>\`);
+            var cancelcb=function() {
+                \$(this).dialog("close");
+                \$("#dialog-upload").remove();
+            }
+
+            var files={};
+
+            var uploadb=function(){
+                 \$.post('${jsonpage}', {action:"upload", files:files}, function(data) {
+                     if(data.response.error) {
+                         alert(data.response.msg);
+                     } else {
+                         location.reload(true);
+                     }
+                 });
+            }
+
+            \$("#dialog-upload").dialog({
+                resizable: false,
+                height: 400,
+                width: 600,
+                modal: true,
+                buttons: {Cancel: cancelcb }
+            });
+
+            var mods={};
+            \$('.ufile').on('change',function(e){
+
+                var file=e.target.files[0];
+                var type=\$(this).attr('id');
+                if(!file)
+                    return;
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var cont=e.target.result;
+                    files[type]=cont;
+                    \$.post('${jsonpage}', {action:"check", type:type, file:cont}, function(data) {
+                        if(!data.response.error) {
+                            mods[type]=data.response.modulus;
+                            if( mods.cfile && mods.kfile)
+                            {
+                                if(mods.cfile == mods.kfile) {
+                                    \$("#dialog-upload").dialog('option','buttons',{ Upload: uploadb, Cancel: cancelcb });
+                                } else {
+                                    alert("Certificate and Private Key do not match (different modulus)");
+                                    data.response.msg += " (mismatch)"
+                                }
+                            }
+                        }
+                        \$(\`#\${type}-msg\`).html(data.response.msg);
+                    });
+                }
+                reader.onerror = function(e) {
+                    alert(e.target.error);
+                }
+                reader.readAsText(file);
+            });
+
+
+
+        });
+    });`;
+
+    req.put(`
+${htmlHead}
+<script>
+    ${adminscr}
+</script>
+${endHtmlHead}
+${htmlBody}
+${adminHtmlTop}
+${htmlMain}
+
+    <h2>Manage Certificates</h2>
+    ${o}
+`);
+
+
+    return {html:`${endHtmlMain}\n${htmlFooter}\n${endHtmlBody}\n`};
+}
+
 
 function adminpage(req){
     if(!checkcred(req, true)) {
@@ -698,7 +1139,7 @@ function adminpage(req){
     // direct html request
     var jsonpage = req.path.path.replace(/html$/,'json');
 
-    var adminscr = 
+    var adminscr =
 `\$(document).ready(function(){
     var hrow=\$('#hrow');
     var utable=\$('#userlist');
@@ -709,10 +1150,10 @@ function adminpage(req){
 <div id="dialog-msg" title="Alert Message">
   <p><span class="ui-icon ui-icon-alert" style="float:left; margin:12px 12px 20px 0;"></span><span id="dialog-msg-span">\${msg}</span></p>
 </div>\`);
-        else 
+        else
             \$("#dialog-msg-span").html(msg);
         \$("#dialog-msg").dialog({
-            resizable: false, 
+            resizable: false,
             height: "auto",
             width: 400,
             modal: true,
@@ -787,7 +1228,7 @@ console.log(u[0]);
             if(!data || !data.updates || data.error) {
                 msg = (data.error? data.error : "Error updating user account(s)<br>");
             }
-            
+
             if(data && data.updates && typeof data.updates == 'object') {
                 selected.each(function(i){
                     let curuser=\$(this).find('.username').text(), userdata;
@@ -820,7 +1261,7 @@ console.log(u[0]);
     \$('#userdel').click(function(event){
 
         let fail=false, selected=\$('.usersel:checked').closest('tr');
-        
+
         if(!selected.length) {
             dialogmsg("no users selected");
             return;
@@ -842,7 +1283,7 @@ console.log(u[0]);
 </div>\`);
 
         \$("#dialog-delete-confirm").dialog({
-            resizable: false, 
+            resizable: false,
             height: "auto",
             width: 400,
             modal: true,
@@ -893,7 +1334,7 @@ console.log(u[0]);
             \$('#useremail').val('');
         });
     });
-    
+
 });
 `
    ;
@@ -905,7 +1346,7 @@ ${htmlHead}
 </script>
 ${endHtmlHead}
 ${htmlBody}
-${htmlTop}
+${adminHtmlTop}
 ${htmlMain}
 
     <h2>Admin Page</h2>
@@ -921,7 +1362,7 @@ ${htmlMain}
     </table>
     <button id="userdel">Delete User(s)</button>
     <button id="userup">Update User(s)</button>
-    
+
 `);
 
     req.put(`<hr><br>
@@ -970,7 +1411,7 @@ function loginRedirect(name, sessid) {
             newurl
         ),
         status:302,
-        headers: { 
+        headers: {
             "location":   newurl,
             "Set-Cookie": `sessid=${%U:sessid}`
         }
@@ -986,7 +1427,7 @@ function firstlogin(req) {
             return {txt: `error creating account table: ${sql.errMsg}`};
 
         acctinfo=make_acctinfo(req.params.email, pass); //email not strictly required
-        
+
         sql.exec("insert into accounts values (COUNTER, 'admin', 'a', ?)", [acctinfo]);
         if(sql.errMsg.length)
             return {txt: `error inserting into accounts table: ${sql.errMsg}`};
@@ -1007,11 +1448,11 @@ function firstlogin(req) {
     </form>
 </body>
 </html>`});
- 
+
     }
 
-    var msg = "Initialize Personal Search DB"; 
-    
+    var msg = "Initialize Personal Search DB";
+
     if(pass && pass2)
         msg="Passwords don't match, try again";
 
@@ -1063,7 +1504,7 @@ function login(req) {
 
             if(!cookie)
                 msg="Unrecoverable error.  Admin account does not exist or other error"
-            else 
+            else
                 return loginRedirect(name,cookie);
         }
     }
@@ -1146,7 +1587,7 @@ function store (req) {
     p.dom  = comp.host;
     if(!p.img) p.img="";
     if(!p.title) p.title=p.dom;
-    p.text = p.title + "\n" + p.furl + "\n" + p.text; 
+    p.text = p.title + "\n" + p.furl + "\n" + p.text;
 
     var hash=crypto.sha1(p.furl, true);
 
@@ -1214,9 +1655,9 @@ function delentry(req){
         for(;i<hashes.length;i++) {
             res=sql.exec(`delete from ${p.user}_pages where Hash=?`, [dehexify(hashes[i])]);
             total+=res.rowCount;
-        }            
+        }
     }
-    
+
     return makeReply( {json: {deleted:total, status:'ok'}} );
 }
 
@@ -1229,7 +1670,7 @@ function checkentry(req) {
     p.hash=crypto.sha1(p.furl, true);
 
     //insert into history
-    //        Hash byte(20), Date date, Url varchar(128), 
+    //        Hash byte(20), Date date, Url varchar(128),
     //        Label varchar(16), Title varchar(64)
     var herrorMsg = false, herror=false;
 
@@ -1266,7 +1707,7 @@ function autocomp(req){
     var q = req.query.query;
     var cwords, word;
 
-    if(!q || q.length < suggestion_word_min_length ) 
+    if(!q || q.length < suggestion_word_min_length )
         return {"suggestions":[]};
 
     var space = q.lastIndexOf(" ");
@@ -1280,7 +1721,7 @@ function autocomp(req){
         );
         cwords=res.rows;
     }
-    else 
+    else
     {
         // get suggestions for the partial word after the last space
         var pref = q.substring(0,space);
@@ -1315,11 +1756,13 @@ module.exports = {
     "autocomp.json":autocomp,
     "cred.json":    getcred,
     "admin.json":   adminpage,
+    "certs.json":   certpage,
     "hist.json":    histdata,
     //web pages
     "history.html": historypage,
     "search.html":  searchpage,
     "login.html":   login,
     "user.html":    userpage,
+    "certs.html":   certpage,
     "admin.html":   adminpage
 }

@@ -5,14 +5,23 @@ die(){
     exit 1;
 }
 
+NOW=$(date "+%Y-%m-%d.%H:%M:%S")
 
-SSOURCE==$(readlink -- "${BASH_SOURCE[0]}")
+SSOURCE=$(readlink -f "${BASH_SOURCE[0]}")
 SDIR=$(dirname "${SSOURCE}")
 WDIR="${SDIR}/web_server"
-CERT="${WDIR}/self-cert.pem"
-KEY="${WDIR}/self-key.pem"
-CONF="${WDIR}/self-cert.conf"
 DATADIR="${WDIR}/data";
+CDIR="${WDIR}/certs"
+
+LCERT="${CDIR}/shse-cert.pem"
+CFILE="${NOW}_shse-cert.pem"
+NCERT="${CDIR}/${CFILE}"
+
+KFILE="${NOW}_shse-key.pem"
+NKEY="${CDIR}/${KFILE}"
+LKEY="${CDIR}/shse-key.pem"
+
+CONF="${CDIR}/shse-cert.conf"
 
 if [ "`whoami`" != "root" ] ; then
     echo "this tool must be run with sudo or as root"
@@ -40,7 +49,11 @@ if [ ! -e $DATADIR ]; then
     mkdir $DATADIR
 fi
 
-if [ ! -e ${CERT} ] ; then
+if [ ! -e $CDIR ]; then
+    mkdir $CDIR
+fi
+
+if [ ! -e ${LCERT} ] ; then
     echo "Creating self signed certificate request"
     cat > ${CONF} <<ENDOFFILE
 [CA_default]
@@ -57,7 +70,7 @@ x509_extensions = v3_ca
 C = US
 ST = California
 L = San Francisco
-O = SHSE
+O = SHSE_SELF_SIGNED
 OU = SHSE
 emailAddress = shse@shse.none
 CN = shse.none
@@ -74,7 +87,9 @@ ENDOFFILE
 
     echo "Creating self signed certificate and server key"
 
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ${KEY} -out ${CERT} -config ${CONF} || die "openssl error"
+    openssl req -x509 -nodes -days 3650 -newkey rsa:4096 -keyout "${NKEY}" -out "${NCERT}" -config "${CONF}" || die "openssl error"
+    ln -s "$CFILE" "$LCERT"
+    ln -s "$KFILE" "$LKEY"
 fi
 
 id nobody &>/dev/null || {
@@ -84,14 +99,15 @@ id nobody &>/dev/null || {
     die "Server Start Failed"
 }
 
-chown -R nobody . || {
+chown -R nobody ${WDIR} || {
     echo "could not change ownership of the current directory to \"nobody\"."
     die "Server Start Failed"
 }
 
 echo "Starting web server"
+
 #make sure texislockd is running (can fail if not in path)
 $RAMPARTDIR/texislockd
-$RAMPART web_server/web_server_conf.js || {
+$RAMPART ${WDIR}/web_server_conf.js || {
     die "Server Start Failed"
 }
