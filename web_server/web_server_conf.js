@@ -397,16 +397,15 @@ if(process.argv[2] == "newcert") {
         if(pid>0) {
             printf("Server should restart in about 15 seconds\n");
         } else if (pid==0) {
-            sleep(2);
+            sleep(2); //give server time to relay message above
             kill(spid,15);
             sleep(1);
             kill(spid,9);
         } else {
             fprintf(stderr,"Error forking to restart server: %d\n",pid);
+            process.exit(1);
         }
 
-//        exec('nohup',{background:true}, 'bash', '-c', `sleep 2; kill ${spid}`)
-//        printf("Server should restart in about 15 seconds\n");
     } else {
         printf("Please manually restart the server\n");
     }
