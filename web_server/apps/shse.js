@@ -1,9 +1,10 @@
+#!/usr/bin/env rampart
 rampart.globalize(rampart.utils);
 
 var cookie_expiration=86400;
 
-//for testing from command line
-if(!global.serverConf) serverConf={dataRoot:'/usr/local/rampart/web_server/data'}
+//for use from command line
+if(!global.serverConf) serverConf={dataRoot:realPath(process.scriptPath+'/../data')}
 
 var Sql = use.sql;
 var crypto = use.crypto;
@@ -41,19 +42,9 @@ function makeSystemTables() {
         }
     }
 
-    /*
-    if(!indexExists("accounts_Id_x")) {
-        sql.exec(`create index accounts_Id_ux on accounts(Id);`);
-        if(!indexExists("accounts_Id_x")) {
-            fprintf(stderr, "error creating index 'accounts_Id_ux': %s\n", sql.errMsg);
-            return false;
-        }
-    }
-    */
-
     if(!tableExists("sessions")) {
         sql.exec(`create table sessions
-        ( Acctid varchar(16), Sessid varchar(48), Expires date
+        ( Acctid varchar(16), Type char(1), Sessid varchar(48), Expires date
         );`);
         if(!tableExists('sessions')) {
             fprintf(stderr, `error creating table 'sessions': %s\n`, sql.errMsg);
@@ -161,7 +152,7 @@ function makeUserTables(tbname) {
 }
 
 /* TEMPLATE and other html or scripts*/
-var htmlHead=`<!DOCTYPE html>
+var htmlHeadfmt=`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -173,6 +164,7 @@ var htmlHead=`<!DOCTYPE html>
   <link rel="stylesheet" href="/css/themes/pepper-grinder/jquery-ui.css">
   <link rel="stylesheet" href="/css/shse.css">
   <link rel="stylesheet" href="/css/common.css">
+  <script>var username="%s";</script>
 `;
 
 var endHtmlHead="</head>";
@@ -194,7 +186,7 @@ var htmlTop=`
       <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
     </div>
     <div>
-      <a href="login.html?logout=1">Log out</a>
+      <a id="logout" href="login.html?logout=1">Log out</a>
     </div>
   </nav>
 `;
@@ -210,13 +202,15 @@ var adminHtmlTop=`
 
   <nav>
     <div>
-      <a href="/apps/shse/admin.html">Home</a>
-      <a href="/apps/shse/certs.html">Certificates</a>
+      <a href="/apps/shse/user.html">Home</a>
+      <a href="/apps/shse/history.html">History</a>
       <a href="#">Docs</a>
       <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
     </div>
     <div>
-      <a href="login.html?logout=1">Log out</a>
+      <a href="/apps/shse/admin.html">Users</a>
+      <a href="/apps/shse/certs.html">Certificates</a>
+      <a id="logout" href="login.html?logout=1">Log out</a>
     </div>
   </nav>
 `;
@@ -280,34 +274,28 @@ var loginredir = {
 
 
 function checkcred(req, require_admin) {
-    var now;
-
     if(!req.cookies.sessid) {
         return false;
     }
 
-    var res;
+    var res, now;
+
     try{
-        res = sql.one("select * from sessions where Sessid=?", [req.cookies.sessid]);
+        res = sql.one("select Type type, Acctid name from sessions where Sessid=?", [req.cookies.sessid]);
     } catch(e){}
     if(!res)  {
         return false;
     }
 
-    if(require_admin && res.Acctid!='admin') {
+    if(require_admin && res.type.toLowerCase() != 'a') {
         return false;
     }
 
     now = parseInt(dateFmt('%s'));
 
-    if(now > res.Expires) {
-        sql.one("delete from sessions where Sessid=?", [req.cookies.sessid]);
-        return false;
-    }
-
     sql.one("update sessions set Expires=? where Sessid=?", [cookie_expiration + now, req.cookies.sessid]);
 
-    return res.Acctid;
+    return res;
 }
 
 function dosearch(q,u,s) {
@@ -331,18 +319,28 @@ function dosearch(q,u,s) {
 var ricos='<span title="Remove" class="rm rico hm">&#x2718;</span><span title="Remove" class="rm rmcb hm"><input type="checkbox" class="sitem" title="select item"></span>';
 
 function searchpage(req) {
-    var user;
-    if(! (user=checkcred(req)) )
+    var top, user, cred=checkcred(req);
+
+    if(!cred)
         return loginredir;
+    user=cred.name;
+    if(!user)
+        return loginredir;
+
     var res, p=req.params;
     var q = p.q?p.q:'';
     var skip=p.sk?parseInt(p.sk):0;
 
+    if(cred.type.toLowerCase()=='a')
+        top=adminHtmlTop;
+    else
+        top=htmlTop;
+    var head=sprintf(htmlHeadfmt, user);
     req.put(`
-${htmlHead}
+${head}
 ${endHtmlHead}
 ${htmlBody}
-${htmlTop}
+${top}
 ${htmlMain}
 ${htmlSearch}value="${q}" ${endHtmlSearch}
 `);
@@ -365,8 +363,8 @@ ${htmlSearch}value="${q}" ${endHtmlSearch}
             <span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg) translate(4px,0px);font-size:28px;position:absolute;left:-30px;top:-10px;width:13px;" title="click to hide database editing options">‣</span>
         </span>
         <span style="display:inline-block;height:22px;padding: 2px 0px 0px 5px;">&nbsp;
-            <span class="hide">
-                <button style="padding: 1px 5px 1px 5px;border:1px solid #b00;position:relative;top:-5px;left:55px;" id="rmselected">Remove Select Items</button>
+            <span id="delsel" class="hide">
+                <button style="padding: 2px 5px 0px 5px;border:1px solid #b00; border-radius:7px; position:relative;top:0px;left:6px;" id="rmselected">Remove Select Items</button>
             </span>
         </span>
         <span style="float:right">Results ${skip+1}-${skip+res.rowCount} of ${res.countInfo.indexCount}</span>
@@ -440,14 +438,22 @@ ${endHtmlBody}`}
 }
 
 function userpage(req){
-    if(!checkcred(req))
+    var cred = checkcred(req);
+    if(!cred)
         return loginredir;
 
+    var top;
+    if(cred.type.toLowerCase()=='a')
+        top=adminHtmlTop;
+    else
+        top=htmlTop;
+
+    var head=sprintf(htmlHeadfmt, cred.name);
     return {html:`
-${htmlHead}
+${head}
 ${endHtmlHead}
 ${htmlBody}
-${htmlTop}
+${top}
 ${htmlMain}
 ${htmlSearch}${endHtmlSearch}
 
@@ -553,20 +559,30 @@ function histdata(req) {
 }
 
 function historypage(req) {
-    var user;
-    if(! (user=checkcred(req)) )
+    var top, user, cred=checkcred(req);
+
+    if(!cred)
         return loginredir;
+    user=cred.name;
+    if(!user)
+        return loginredir;
+
     var res, p=req.params;
     var q = p.q?p.q:'';
 
+    if(cred.type.toLowerCase()=='a')
+        top=adminHtmlTop;
+    else
+        top=htmlTop;
+    var head=sprintf(htmlHeadfmt, user);
     req.put(`
-${htmlHead}
+${head}
 <script>
     var nMonths=${nMonths};
 </script>
 ${endHtmlHead}
 ${htmlBody}
-${htmlTop}
+${top}
 ${htmlMain}
 
 ${htmlSearch}value="${q}" ${endHtmlSearch}
@@ -581,123 +597,10 @@ ${endHtmlBody}`}
 
 }
 
-
 function gethash(salt, pass) {
     //PBKDF2 from passToKeyIV, discard unneeded IV
     var res = crypto.passToKeyIv({pass:pass,salt:salt});
     return res.key;
-}
-
-function getusers(req) {
-    var res = sql.exec("select Acctid, Acctinfo.$.email, Acctinfo.$.passhash from accounts",{returnType:'array'});
-    return {json:res.rows};
-}
-
-function make_acctinfo(email,pass) {
-    var salt = hexify(crypto.rand(16));
-    return {
-        passsalt: salt,
-        passhash: gethash(salt, pass),
-        email: email
-    }
-}
-
-function deluser(user) {
-    if(getType(user)!='String' || user.length==0)
-        return false;
-    sql.one("delete from accounts where Acctid=?",[user]);
-    sql.one(`drop table ${user}_pages`);
-    sql.one(`drop table ${user}_history`);
-
-    return true;
-}
-
-
-function adduser(req) {
-    var user = req.params.user;
-    var pass = req.params.pass;
-    var email= req.params.email;
-
-    if(sql.one("select * from accounts where Acctid=?",[user]))
-        return {json:{error: "Account exists"}};
-
-    var acctinfo = make_acctinfo(email,pass);
-    sql.exec("insert into accounts values (COUNTER, ?, 'u', ?)", [user, acctinfo]);
-    var ret=makeUserTables(user);
-    if(ret.error) {
-        deluser(user);
-        return {json:{error: ret.error}};
-    }
-
-    if( ! sql.one("select * from accounts where Acctid=?",[user]))
-        return {json:{error: sql.errMsg}};
-
-    return {json:{key:acctinfo.passhash}}
-}
-
-function delusers(req){
-    var users = req.params.user, j=0;
-    for (var i=0;i<users.length;i++) {
-        if(users[i]!='admin') {
-            deluser(users[i]);
-            j++;
-        }
-    }
-    return {json:{ndels:j}}
-}
-
-function updateuser(req) {
-    var patch, u=req.params.user, p=req.params.pass, e=req.params.email, i=0, err="", updates={};
-
-    for (;i<u.length;i++){
-        var acctinfo, res=sql.one("select * from accounts where Acctid=?", [u[i]]);
-
-        if(!res) {
-            err+=`Account '${u[i]}' not found<br>`;
-            continue;
-        }
-
-        try {
-            acctinfo=JSON.parse(res.Acctinfo);
-        } catch(e) {}
-
-        if(!acctinfo) {
-            if(p[i].length) {
-                err+=`Account '${u[i]}' metadata was corrupt. A new key has been created.  Please check other info.<br>`;
-                acctinfo = make_acctinfo(e[i],p[i]);
-            } else {
-                err+=`Account '${u[i]}' metadata was corrupt. Update with new password to correct.<br>`
-                continue;
-            }
-        }
-
-        if(! p[i].length) {
-            //no password update
-            //acctinfo.email=e[i];
-            patch={email:e[i]};
-        } else {
-            // copy over in case we have more members in the future
-            //Object.assign(acctinfo,make_acctinfo(e[i],p[i]));
-            patch=make_acctinfo(e[i],p[i]);
-        }
-
-        // see: https://rampart.dev/docs/sql-server-funcs.html#json-merge-patch
-        res=sql.exec("update accounts set Acctinfo=json_merge_patch(Acctinfo,?) where Acctid=?", [patch, u[i]]);
-
-        if(!res.rowCount)
-            err+=`Failed to update account '${u[i]}'<br>`;
-        else {
-            updates[u[i]]= {
-                email: e[i],
-                key:   patch.passhash? patch.passhash:''
-            }
-        }
-    }
-    var ret={};
-    if(err.length)
-        ret.error=err;
-    ret.updates=updates;
-    return {json:ret};
 }
 
 function findcerts() {
@@ -905,7 +808,8 @@ function delcert(req) {
 }
 
 function certpage(req){
-    if(!checkcred(req, true)) {
+    var cred=checkcred(req, true);
+    if(!cred) {
         return loginredir;
     }
 
@@ -943,9 +847,9 @@ function certpage(req){
     o+='</table><br><button class="cbut" id="activate">Activate</button>'+
        '<button class="cbut" id="delete">Delete</button>'+
        '<button class="cbut" id="upload">Upload New</button><br>';
-
+    var head=sprintf(htmlHeadfmt, cred.name);
     req.put(`
-${htmlHead}
+${head}
 <script src="/js/shse-admin.js"></script>
 ${endHtmlHead}
 ${htmlBody}
@@ -960,38 +864,167 @@ ${htmlMain}
     return {html:`${endHtmlMain}\n${htmlFooter}\n${endHtmlBody}\n`};
 }
 
+function getusers(req, accttype) {
+    var res = sql.exec("select Acctid, Type, Acctinfo.$.email, Acctinfo.$.passhash from accounts",{returnType:'array'});
+    if(accttype=='A')
+        return {json:{rows:res.rows, owner:true}};
+    return {json: {rows:res.rows, accttype:accttype}};
+}
+
+function make_acctinfo(email,pass) {
+    var salt = hexify(crypto.rand(16));
+    return {
+        passsalt: salt,
+        passhash: gethash(salt, pass),
+        email: email
+    }
+}
+
+function deluser(user) {
+    if(getType(user)!='String' || user.length==0)
+        return false;
+
+    var res = sql.one("select * from accounts where Acctid=?",[user]);
+    if(!res || res.Type=='A')
+        return false;
+
+    sql.one("delete from accounts where Acctid=?",[user]);
+    sql.one("delete from sessions where Acctid=?",[user]);
+    sql.one(`drop table ${user}_pages`);
+    sql.one(`drop table ${user}_history`);
+
+    return true;
+}
+
+
+function adduser(req) {
+    var user = req.params.user;
+    var pass = req.params.pass;
+    var email= req.params.email;
+
+    if(sql.one("select * from accounts where Acctid=?",[user]))
+        return {json:{error: "Account exists"}};
+
+    var acctinfo = make_acctinfo(email,pass);
+    sql.exec("insert into accounts values (COUNTER, ?, 'u', ?)", [user, acctinfo]);
+    var ret=makeUserTables(user);
+    if(ret.error) {
+        deluser(user);
+        return {json:{error: ret.error}};
+    }
+
+    if( ! sql.one("select * from accounts where Acctid=?",[user]))
+        return {json:{error: sql.errMsg}};
+
+    return {json:{key:acctinfo.passhash}}
+}
+
+function delusers(req){
+    var users = req.params.user, j=0;
+    for (var i=0;i<users.length;i++) {
+        deluser(users[i]);
+        j++;
+    }
+    return {json:{ndels:j}}
+}
+
+function updateuser(req,accttype) {
+    var patch, t=req.params.type, u=req.params.user, p=req.params.pass, e=req.params.email, i=0, err="", updates={};
+    var isowner = (accttype=='A');
+
+    for (;i<u.length;i++){
+        var acctinfo, res=sql.one("select * from accounts where Acctid=?", [u[i]]);
+
+        if(!res) {
+            err+=`Account '${u[i]}' not found<br>`;
+            continue;
+        }
+
+        // don't let admins change the owner account
+        if(res.Type=='A' && !isowner)
+            continue;
+
+        try {
+            acctinfo=JSON.parse(res.Acctinfo);
+        } catch(e) {}
+
+        if(!acctinfo) {
+            if(p[i].length) {
+                err+=`Account '${u[i]}' metadata was corrupt. A new key has been created.  Please check other info.<br>`;
+                acctinfo = make_acctinfo(e[i],p[i]);
+            } else {
+                err+=`Account '${u[i]}' metadata was corrupt. Update with new password to correct.<br>`
+                continue;
+            }
+        }
+
+        if(! p[i].length) {
+            //no password update
+            //acctinfo.email=e[i];
+            patch={email:e[i]};
+        } else {
+            // copy over in case we have more members in the future
+            //Object.assign(acctinfo,make_acctinfo(e[i],p[i]));
+            patch=make_acctinfo(e[i],p[i]);
+        }
+
+        // see: https://rampart.dev/docs/sql-server-funcs.html#json-merge-patch
+        if(isowner && t[i]=="admin") //only owner can change account types
+            res=sql.exec("update accounts set Type='a', Acctinfo=json_merge_patch(Acctinfo,?) where Acctid=?", [patch, u[i]]);
+        else if(isowner && t[i]=="user")  //only owner can change account types
+            res=sql.exec("update accounts set Type='u', Acctinfo=json_merge_patch(Acctinfo,?) where Acctid=?", [patch, u[i]]);
+        else  //admins and owner can change password and email (but see above where admins can't change owner acct)
+            res=sql.exec("update accounts set Acctinfo=json_merge_patch(Acctinfo,?) where Acctid=?", [patch, u[i]]);
+
+        if(!res.rowCount)
+            err+=`Failed to update account '${u[i]}'<br>`;
+        else {
+            updates[u[i]]= {
+                email: e[i],
+                key:   patch.passhash? patch.passhash:''
+            }
+        }
+    }
+    var ret={};
+    if(err.length)
+        ret.error=err;
+    ret.updates=updates;
+    return {json:ret};
+}
 
 function adminpage(req){
-    if(!checkcred(req, true)) {
+    var cred = checkcred(req, true);
+    if(!cred) {
         return loginredir;
     }
 
     // ajax json requests
     switch (req.params.action) {
         case 'get':
-            return getusers(req);
+            return getusers(req, cred.type);
         case 'add':
             return adduser(req);
         case 'del':
             return delusers(req);
         case 'update':
-            return updateuser(req);
+            return updateuser(req, cred.type);
     }
-
+    var head=sprintf(htmlHeadfmt, cred.name);
     req.put(`
-${htmlHead}
+${head}
 <script src="/js/shse-admin.js"></script>
 ${endHtmlHead}
 ${htmlBody}
 ${adminHtmlTop}
 ${htmlMain}
 
-    <h2>Admin Page</h2>
+    <h2>User Accounts</h2>
     <h3>Users</h3>
-    <table id="userlist">
+    <table id="userlist" class="ctb">
         <tr id="hrow">
-            <th style="text-align:left" class="chkbx"><label>All<input type="checkbox" id="userselall"></label></th>
+            <th style="text-align:left" class="chkbx"></th>
             <th class="username">Name</th>
+            <th>Type</th>
             <th>Email</th>
             <th>Password</th>
             <th>Key</th>
@@ -1024,13 +1057,13 @@ ${endHtmlBody}
 }
 
 function checkpass(name,pass) {
-    var cred = sql.one("select Acctinfo.$.passhash passhash, Acctinfo.$.passsalt passsalt from accounts where Acctid=?", [name]);
+    var cred = sql.one("select Type type, Acctinfo.$.passhash passhash, Acctinfo.$.passsalt passsalt from accounts where Acctid=?", [name]);
     var ainfo, calchash;
 
     if(cred && cred.passhash) {
         calchash = gethash(cred.passsalt, pass);
         if(calchash == cred.passhash)
-            return cred.passhash;
+            return cred;
     }
     return false;
 }
@@ -1038,8 +1071,6 @@ function checkpass(name,pass) {
 function loginRedirect(name, sessid) {
     //save a cookie with credential hash here.
     var newurl="user.html";
-    if(name=='admin')
-        newurl="admin.html";
 
     return {
         html: sprintf(
@@ -1057,19 +1088,38 @@ function loginRedirect(name, sessid) {
 
 
 function firstlogin(req) {
-    var pass=req.params.pass, pass2=req.params.pass2, acctinfo={};
+    var pass=req.params.pass, pass2=req.params.pass2, name=req.params.name, acctinfo={};
+    var msg = "Initialize Personal Search DB";
+
+    if(!name) name='';
 
     if(pass && pass2 && pass==pass2) {
-        if(!makeSystemTables())
-            return {txt: `error creating account table: ${sql.errMsg}`};
+        if(!name || name.length < 2)
+            msg="Name too short"
+        
+        else if(pass!=pass2)
+            msg="Passwords don't match, try again";
 
-        acctinfo=make_acctinfo(req.params.email, pass); //email not strictly required
+        else if(pass.length < 5)
+            msg="Password is too short";
 
-        sql.exec("insert into accounts values (COUNTER, 'admin', 'a', ?)", [acctinfo]);
-        if(sql.errMsg.length)
-            return {txt: `error inserting into accounts table: ${sql.errMsg}`};
+        else {
+            if(!makeSystemTables())
+                return {txt: `error creating account table: ${sql.errMsg}`};
 
-        return({html:
+            acctinfo=make_acctinfo(req.params.email, pass); //email not strictly required
+
+            sql.exec("insert into accounts values (COUNTER, ?, 'A', ?)", [name, acctinfo]);
+            if(sql.errMsg.length)
+                return {txt: `error inserting into accounts table: ${sql.errMsg}`};
+
+            var ret=makeUserTables(name);
+            if(ret.error) {
+                deluser(user);
+                return {txt: `error inserting into accounts table: ${ret.error}`};
+            }
+
+            return({html:
 `<!DOCTYPE html>
 <html>
 <head>
@@ -1079,19 +1129,16 @@ function firstlogin(req) {
     <h2>Admin account created.</h2>
     <h3>Log into admin account</h3>
     <form method="POST">
-    Name: <input type="text" id="name" name="name" value="admin"><br>
+    Name: <input type="text" id="name" name="name"><br>
     Pass: <input type="password" id="pass" name="pass"><br>
     <input type=submit><br>
     </form>
 </body>
 </html>`});
-
+        }
     }
 
-    var msg = "Initialize Personal Search DB";
 
-    if(pass && pass2)
-        msg="Passwords don't match, try again";
 
     return({html:
 `<!DOCTYPE html>
@@ -1101,11 +1148,13 @@ function firstlogin(req) {
 </head>
 <body>
     <h2>${msg}</h2>
-    First thing you must do is create an "admin" password
+    First thing you must do is create an account. This account will be an admin account
+    which can be used to create more accounts, as desired.
     <form method="POST">
+    Name: <input type="text" id="name" name="name" value="${name}"><br>
     Enter new pass: <input type="password" id="pass" name="pass"><br>
     Confirm pass: <input type="password" id="pass2" name="pass2"><br>
-    Contact email: <input type=text id=email name=email><br>
+    Contact email: <input type=text id=email name=email> (currently unused; may be blank)<br>
     <input type=submit><br>
     </form>
 </body>
@@ -1113,34 +1162,36 @@ function firstlogin(req) {
     });
 }
 
-function make_session(name, expires) {
+function make_session(name, expires, type) {
     // clean up old sessions
     sql.one("delete from sessions where Expires < 'now'");
 
     var sessid = sprintf('%0B', crypto.rand(32));
-    if(sql.one("insert into sessions values(?,?,?)", [name, sessid, expires]))
+    if(sql.one("insert into sessions values(?,?,?,?)", [name, type, sessid, expires]))
         return sessid;
     else return false;
 }
 
 
-function login(req) {
-    var name=req.params.name, pass=req.params.pass, credhash, logout=req.params.logout
+function loginpage(req) {
+    var name=req.params.name, pass=req.params.pass, cred, credhash, logout=req.params.logout
         msg="Log into personal search";
 
     if(!tableExists("accounts"))
         return firstlogin(req);
 
     if(name && pass) {
-        credhash = checkpass(name,pass);
+        cred = checkpass(name,pass);
+        if(cred)
+            credhash=cred.passhash;
         msg="Incorrect name or pass, try again:";
         if(credhash) {
             var cookie;
             var expires=cookie_expiration + parseInt(dateFmt('%s'));
-            var cookie = make_session(name, expires);
+            var cookie = make_session(name, expires, cred.type);
 
             if(!cookie)
-                msg="Unrecoverable error.  Admin account does not exist or other error"
+                msg="Unrecoverable error. Could not create session."
             else
                 return loginRedirect(name,cookie);
         }
@@ -1189,7 +1240,7 @@ function checkkey(name,key) {
 
 function checkeither(req) {
     var p=req.params;
-    var user;
+    var user,type='u';
     if(p.user || p.key) {
         if(checkkey( p.user, p.key) )
             user=p.user;
@@ -1197,13 +1248,18 @@ function checkeither(req) {
             return {status:'bad key'};
     }
     else if (req.cookies.sessid) {
-        user=checkcred(req);
-        if(!user)
+        var user, cred=checkcred(req);
+
+        if(!cred)
             return {status:'bad session'};
+        user=cred.name;
+        if(!user)
+            return {status:'bad session'};;
+        type=cred.type;
     } else {
         return {status:'not logged in or failed to provide user/key'}
     }
-    return {user:user};
+    return {user:user, type:type};
 }
 
 function store (req) {
@@ -1267,16 +1323,19 @@ function results(req) {
 
 function getcred(req) {
     //console.log(req.params.user, req.params.pass);
-    var key = checkpass(req.params.user, req.params.pass);
+    var cred = checkpass(req.params.user, req.params.pass);
     //console.log(req.params.user, req.params.pass, key);
-    return makeReply( {json: {key: key}} );
+    return makeReply( {json: {key: cred.passhash}} );
 }
 
 function delentry(req){
     var p=req.params, total=0;;
-    if(! checkkey( p.user, p.key) )
-        return makeReply( {json: {status:'bad key'}} );
+    var sres = checkeither(req);
 
+    if(sres.status)
+        return makeReply( {json: sres} );
+
+    var user=sres.user;
 
     if(p.furl) {
         var comp = urlutil.components(p.furl);
@@ -1287,14 +1346,14 @@ function delentry(req){
     }
 
     if(p.dom) {
-        res=sql.exec(`delete from ${p.user}_pages where Dom=?`, [p.dom]);
+        res=sql.exec(`delete from ${user}_pages where Dom=?`, [p.dom]);
         total+=res.rowCount;
     }
 
     if(p.hash) {
         var res, i=0, hashes=p.hash;
         for(;i<hashes.length;i++) {
-            res=sql.exec(`delete from ${p.user}_pages where Hash=?`, [dehexify(hashes[i])]);
+            res=sql.exec(`delete from ${user}_pages where Hash=?`, [dehexify(hashes[i])]);
             total+=res.rowCount;
         }
     }
@@ -1388,22 +1447,69 @@ function autocomp(req){
     return makeReply( {json: {suggestions: cwords}});
 }
 
-module.exports = {
-    //ajax endpoints
-    "store.json":   store,
-    "results.json": results,
-    "delete.json":  delentry,
-    "check.json":   checkentry,
-    "autocomp.json":autocomp,
-    "cred.json":    getcred,
-    "admin.json":   adminpage,
-    "certs.json":   certpage,
-    "hist.json":    histdata,
-    //web pages
-    "history.html": historypage,
-    "search.html":  searchpage,
-    "login.html":   login,
-    "user.html":    userpage,
-    "certs.html":   certpage,
-    "admin.html":   adminpage
+if(module && module.exports)
+    module.exports = {
+        //ajax endpoints
+        "store.json":   store,
+        "results.json": results,
+        "delete.json":  delentry,
+        "check.json":   checkentry,
+        "autocomp.json":autocomp,
+        "cred.json":    getcred,
+        "admin.json":   adminpage,
+        "certs.json":   certpage,
+        "hist.json":    histdata,
+        //web pages
+        "history.html": historypage,
+        "search.html":  searchpage,
+        "login.html":   loginpage,
+        "user.html":    userpage,
+        "certs.html":   certpage,
+        "admin.html":   adminpage
+    }
+else {
+    function die(msg) {
+        fprintf('%s\n',msg);
+        process.exit(1);
+    }
+
+    var args = process.argv
+    if(args[2] == 'updateUser' && args[3] && args[4] ) {
+        var user=args[3];
+        var pass=args[4];
+        var res = sql.one("select Acctinfo.$.email email from accounts where Acctid=?", [user]);
+        if(!user)
+            die(`${user} does not exist`);
+        if(pass.length < 5)
+            die('password too short');
+        res=make_acctinfo(res.email,pass);
+        res=sql.exec("update accounts set Acctinfo=json_merge_patch(Acctinfo,?) where Acctid=?", [res, user]);
+        if(sql.errMsg)
+            die(sql.errMsg);
+        printf("account updated\n");
+    } else if (args[2] == 'listUsers') {
+        res=sql.exec("select Acctid, Acctinfo.$.email email, Acctinfo.$.passhash passhash, Type type from accounts");
+        var rows=res.rows, row, type, emax=5, amax=5;
+        for (var i=0;i<rows.length;i++) {
+            row=rows[i];
+            if(row.email.length > emax) emax = row.email.length;
+            if(row.Acctid.length > emax) amax = row.Acctid.length;
+        }
+        printf('%-*s    %-*s    Type     Key\n', amax, "Name", emax, "Email")
+        for (var i=0;i<rows.length;i++) {
+            var row=rows[i];
+            switch(row.type) {
+                case 'a': type="Admin";break;
+                case 'A': type="Owner";break;
+                case 'u': type="User ";break;
+                default:  type="Unkwn";break;
+            }
+            printf('%-*s    %-*s    %s    %s\n', amax, row.Acctid, emax, row.email, type, row.passhash);
+        }
+    } else{
+        printf("This is the main script used by the server.\nOptions for command line use:\n"+
+                "    %s %s updateUser <existingUsername> <newPassword>\n" +
+                "    %s %s listUsers\n", args[0], args[1], args[0], args[1]);
+        //console.log(serverConf);
+    }
 }

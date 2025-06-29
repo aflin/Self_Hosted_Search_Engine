@@ -53,7 +53,7 @@ function dosave(all){
     if(lastcaldate) save.lastcaldate=lastcaldate;
     if(all) {
         save.lastr=$('#res').html();
-        console.log(save.lastr);
+        //console.log(save.lastr);
     }
     browser.storage.local.set(save);
 }
@@ -108,11 +108,13 @@ function mktitles(){
             t.css('transform','rotate(270deg) translate(4px,0px)');
             t.removeClass('isvis');
             t.attr('title','click to show database editing options');
+            $('#delsel').hide();
         } else {
             $('.hm').show(250);
             t.css('transform','rotate(90deg)');
             t.addClass('isvis');
             t.attr('title','click to hide database editing options');
+            $('#delsel').show();
         }
     });
 
@@ -161,7 +163,7 @@ function mktitles(){
         popup=$('.popup');
 
         $('.sitem:checked').each(function(i){
-            req.hash.push( t.closest('.resi').attr('data-hash') );
+            req.hash.push( $(this).closest('.resi').attr('data-hash') );
         });
 
         dodel(popup, req);
@@ -228,7 +230,7 @@ function dosearch(skip,q) {
               '<span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg) translate(4px,0px);font-size:28px;position:absolute;left:-30px;top:-10px;width:13px;" title="click to hide database editing options">&#8227;</span>'+
           '</span>'+
 //          '<span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg);font-size:28px; position: absolute;left:-30px;top:-10px;width:13px;">&#8227;</span>'+
-          '<span style="display:inline-block;height:22px;padding: 2px 0px 0px 5px;">&nbsp;<span class="hide"><button style="padding: 1px 5px 1px 5px;border:1px solid #b00;position:relative;top:-5px;left:55px;" id="rmselected">Remove Select Items</button></span></span>'+
+          '<span style="display:inline-block;height:22px;padding: 2px 0px 0px 5px;">&nbsp;<span id="delsel" class="hide"><button style="padding: 2px 5px 0px 5px;border:1px solid #b00; border-radius:7px;;position:relative;top:0px;left:13px;" id="rmselected">Remove Select Items</button></span></span>'+
           '<span style="float:right">Results '+rescnt+'</span></div>');
 
           for (var i=0;i<l;i++) {

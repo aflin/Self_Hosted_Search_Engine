@@ -228,34 +228,63 @@ function do_main() {
     var utable=$('#userlist');
 
 
-    function makerow(user,email, key) {
-        var chbox = '<input type="checkbox" class="usersel">';
-        //if(user=='admin') chbox='';
+    function makerow(user, type, email, key, isowner) {
+        var tbox, chbox = '<input type="checkbox" class="usersel">';
+
+        switch(type) {
+            case 'a': 
+                type="Admin";
+                if(isowner)
+                    tbox='<select class="accttype isadmin"><option value="user">User</option><option selected value="admin">Admin</option></select>'
+                else
+                    tbox="Admin";
+                break;
+            case 'A': 
+                type="Owner";
+                tbox="Owner";
+                break;
+            default : 
+                type="User";
+                if(isowner)
+                    tbox='<select class="accttype isuser"><option selected value="user">User</option><option value="admin">Admin</option></select>'
+                else
+                    tbox="User";
+                break;
+        }
         return `<tr>
             <td class="chkbx">${chbox}</td>
             <td class="username usernamecl"><center class="usernamecl">${user}</center></td>
+            <td class="utype utype-${type}">${tbox}</td>
             <td><input class="useremail" value="${email}" data-origval="${email}" type=text size=20></td>
             <td><input class="userpass" placeholder="enter new pass to reset" type=text size=20></td>
             <td class="userkey">${key}</td>
         </tr>`;
     }
 
-    $.getJSON(`${jsonpage}?action=get`, function(data){
+    $('body').on('change',function(e,ui){
+        var tar = $(e.target);
+        if(tar.closest('table').attr('id') == 'userlist') {
+            if(!tar.hasClass('usersel'))
+                tar.closest('tr').find('.usersel').prop('checked',true);
+        }
+    });
 
-        if(!Array.isArray(data))
+    $.getJSON(`${jsonpage}?action=get`, function(data){
+        var r = data.rows, row;
+        if(!Array.isArray(r))
             dialogmsg("bad json from server");
         else {
             let i=0, rowhtml="";
-            for (;i<data.length;i++) {
-                row=data[i];
-                rowhtml += makerow(row[0],row[1],row[2]);
+            for (;i<r.length;i++) {
+                row=r[i];
+                rowhtml += makerow(row[0],row[1],row[2],row[3], data.owner);
             }
             hrow.after(rowhtml);
         }
     });
 
     $('#userup').click(function(event){
-        let fail=false, u=[], p=[], e=[], selected=$('.usersel:checked').closest('tr');
+        let fail=false, u=[], p=[], e=[], a=[], selected=$('.usersel:checked').closest('tr');
 
         if(!selected.length) {
             dialogmsg(`No user accounts selected`);
@@ -264,19 +293,26 @@ function do_main() {
 
         selected.each(function(i){
             let origE=$(this).find('.useremail').attr('data-origval');
+            var t=$(this);
 
-            u[i]=$(this).find('.username').text();
-            p[i]=$(this).find('.userpass').val();
-            e[i]=$(this).find('.useremail').val();
+            u[i]=t.find('.username').text();
+            p[i]=t.find('.userpass').val();
+            e[i]=t.find('.useremail').val();
+            
+            var atype=t.find('.accttype').val();
+            if(atype && !t.find('.accttype').hasClass(`is${atype}`))
+                a[i]=atype;
+            else//blank if no change
+                a[i]="";
 
-            if(p[i]!="" && p[i].length<7) {
+            if(p[i]!="" && p[i].length<5) {
                 dialogmsg(`Password for user "${u[i]}" is too short`);
                 fail=true;
                 return;
             }
 
-            if(p[i]=="" && e[i] == origE) {
-                dialogmsg(`Checked user "${u[i]}" has no changes to email or password.`);
+            if(p[i]=="" && e[i] == origE && a[i]=='') {
+                dialogmsg(`Checked user "${u[i]}" has no changes to account data.`);
                 fail=true;
                 return;
             }
@@ -284,7 +320,7 @@ function do_main() {
 
         if(fail)
             return;
-        $.post(jsonpage, {action:"update", user:u, pass:p, email:e}, function(data) {
+        $.post(jsonpage, {action:"update", user:u, pass:p, email:e, type:a}, function(data) {
             let msg='', total=0;
 
             if(!data || !data.updates || data.error) {
@@ -326,6 +362,11 @@ function do_main() {
 
         if(!selected.length) {
             dialogmsg("no users selected");
+            return;
+        }
+
+        if(selected.find('.utype-Owner').length) {
+            dialogmsg("Cannot delete the Admin account.");
             return;
         }
 
@@ -375,12 +416,12 @@ function do_main() {
 
     $('#useradd').click(function(event){
         let u=$('#username').val(), p=$('#userpass').val(), e=$('#useremail').val();
-        if(u.length < 5) {
+        if(u.length < 2) {
             dialogmsg("user name too short");
             return;
         }
 
-        if(p.length < 7) {
+        if(p.length < 5) {
             dialogmsg("password too short");
             return;
         }
@@ -390,7 +431,7 @@ function do_main() {
                 dialogmsg(`error adding user: ${data.error}`);
                 return;
             }
-            utable.append(makerow(u,e,data.key));
+            utable.append(makerow(u,'u',e,data.key));
             $('#username').val('');
             $('#userpass').val('');
             $('#useremail').val('');

@@ -44,15 +44,8 @@ function attachhov(){
 }
 
 function postfail() {
-    msg = `Could not connect to server at https://${gset.server}.
-Make sure server is running by refreshing this page or clicking "OK" below.
-If the server is running but is using a self signed certificate,
-and you trust the server, you will need to add an exception to the browser.
-
-Open server page in a new window?`;
-    if(window.confirm(msg)){
-        window.open(`https://${gset.server}/`);
-    }
+    msg = 'Could not connect to server.'
+    alert(msg);
 }
 
 function mktitles(){
@@ -72,18 +65,21 @@ function mktitles(){
             t.css('transform','rotate(270deg) translate(4px,0px)');
             t.removeClass('isvis');
             t.attr('title','click to show database editing options');
+            $('#delsel').hide();
         } else {
             $('.hm').show(250);
             t.css('transform','rotate(90deg)');
             t.addClass('isvis');
             t.attr('title','click to hide database editing options');
+            $('#delsel').show();
+            console.log('show');
         }
     });
 
     function dodel(popup, req) {
         $.post({
-            url: `https://${gset.server}/apps/search/delete.json` ,
-
+            url: '/apps/shse/delete.json' ,
+            data: req,
             success: function(data){
                 var msg,color,delay=1000;
 
@@ -101,8 +97,7 @@ function mktitles(){
                 setTimeout(function(){
                     popup.find('table').hide(250,function(){
                         popup.remove();
-                        // replace this with a page refresh or something
-                        // if (data.status=='ok') dosearch();
+                        location.reload();
                     });
                 },delay);
             },
@@ -123,7 +118,7 @@ function mktitles(){
         popup=$('.popup');
 
         $('.sitem:checked').each(function(i){
-            req.hash.push( t.closest('.resi').attr('data-hash') );
+            req.hash.push( $(this).closest('.resi').attr('data-hash') );
         });
 
         dodel(popup, req);
@@ -135,11 +130,7 @@ function mktitles(){
         if(d=="null") d=null;
         $('body').append('<div class="popup"><table><tr><td colspan=2><b>Delete Entry?</b><br><span style="font-size:10px;color:#07c">'+r.find('a').attr('href')+'</td></tr>'+
             '<tr><td>Only this entry:</td><td><button class="rmb rme">Delete</button></td></tr>'+
-            (d?
-                '<tr><td>All from '+d+':</td><td><button class="rmb rmd">Delete</button></td>/tr>'+
-                '<tr><td>All from '+d+' and blacklist<br>(do not index) future visits to '+d+':</td><td><button class="rmb rmd rmbl">Delete</button></td></tr>'
-             :""
-             )+
+            (d ? '<tr><td>All from '+d+':</td><td><button class="rmb rmd">Delete</button></td>/tr>':"")+
             '<tr><td colspan=2"><button style="float:right" class="rmb" id="cancel">Cancel</button></td></tr>'+
         '</table></div>');
         popup=$('.popup');
@@ -155,101 +146,16 @@ function mktitles(){
                 req.dom=d;
             
             dodel(popup,req);
-            
-            if (b.is('.rmbl')) {
-                gset.exclude[d]=2;
-                console.log(gset);
-                browser.storage.local.set({exclude:gset.exclude});    
-            }
-            
-        
         });
     });
 }
-/*
-function dosearch(skip,q) {
-    var res=$('#res');
-    var ricos='<span title="Remove" class="rm rico hm">&#x2718;</span><span title="Remove" class="rm rmcb hm"><input type="checkbox" class="sitem" title="select item"></span>';
-    if (!q) q=$('#fq').val();
-    else $('#fq').val(q);
-    res.empty();
-    if (!skip) skip=0;
-    else skip=parseInt(skip);
-    if (q != '')
-     $.post( `https://${gset.server}/apps/search/results.json` ,
-       {q:q, sk:skip, user:gset.user, key: gset.key},
-       function(data){
-        if (!data.rowCount)
-            res.append('no results for '+ $('#fq').val() );
-        else {
-          var l=data.rowCount;
-          var rescnt = "" + (skip+1) + '-' + (skip+l) + ' of ' + data.countInfo.indexCount;
-          res.append('<div title="click to show database editing options" id="showrm"><label class="hide ib sall"><input style="vertical-align:middle" type="checkbox" id="sall" class="hide ib" title="Select All">Select All</label>'+
-          '<span id="showopt" style="position:relative;">'+
-              '<span style="cursor: pointer;position: bsolute;left:-30px;top:-11px;">Options</span>' +
-              '<span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg) translate(4px,0px);font-size:28px;position:absolute;left:-30px;top:-10px;width:13px;" title="click to hide database editing options">&#8227;</span>'+
-          '</span>'+
-//          '<span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg);font-size:28px; position: absolute;left:-30px;top:-10px;width:13px;">&#8227;</span>'+
-          '<span style="display:inline-block;height:22px;padding: 2px 0px 0px 5px;">&nbsp;<span class="hide"><button style="padding: 1px 5px 1px 5px;border:1px solid #b00;position:relative;top:-5px;left:55px;" id="rmselected">Remove Select Items</button></span></span>'+
-          '<span style="float:right">Results '+rescnt+'</span></div>');
-
-          for (var i=0;i<l;i++) {
-            var r=data.rows[i];
-            var ico= r.image ? r.image : ''+r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico' ;
-            var icl = r.image? " hov" : '';
-            var d= new Date(0);
-            d.setUTCSeconds(parseInt(r.last));
-        
-            res.append('<div data-hash="'+r.hash+'" data-dom="'+r.dom+'" id="r'+i+'" class="resi"><span class="imgwrap">'+ricos+'<img class="fimage'+icl+'" src="home_website_start_house.svg"></span>'+
-            '<span class="itemwrap"><span class="abstract nowrap"><a class="url-a tar" ' + (browser.t=='f'?'style="width:calc( 100% - 165px )" ':'') + 'target="_blank" href="'+r.url+'">'+
-                escapeHtml(r.title.replace(/\s+/g,' '))+'</a><span class="timestamp">('+d.toLocaleString()+')</span></span><br><span class="abstract url-span">'+r.url+
-                '</span></span><br><span class="abstract">'+r.abstract+"</span></div>");
-            
-            loadImage(ico,$('#r'+i).find('img'),(i==l-1));
-          }
-          if (skip > 9) 
-              res.append('<span class="abstract" style="color:blue; float:left;margin:10px;"><a data-q="'+q+'" data-skip="'+(skip-10)+'" class="np" id="prev">Previous</a></span>');
-
-          if(data.countInfo.indexCount>skip+10)
-              res.append('<span style="color:blue; float:right;margin:10px;" class="abstract"><a data-q="'+q+'" data-skip="'+(skip+10)+'" class="np" id="next">Next</a></span>');
-
-        }
-        mktitles();
-        attachhov();
-        dosave(true);
-       }
-     ).fail(postfail);
-}
-*/
 
 $(document).ready(function(){
     var enable=$('#enable'),enableafter=false;
     var mobile = /mobile/i.test(navigator.userAgent);
-    /*
-    if(/chrome\//i.test(navigator.userAgent)) {
-            $('body').css('width','600px');
-            window.browser.t='c';
-        } else if(/firefox\//i.test(navigator.userAgent)  && ! mobile ) {
-                $('body').css('width','764px');
-                window.browser.t='f';
-        }
-
-    $('body').on('click', function(e){
-        var t=$(e.target);
-        if (t.hasClass('np')) {
-            var skip=t.attr('data-skip');
-            var q=t.attr('data-q');
-            dosearch(skip,q);
-            $('html,body').scrollTop(0);
-        }
-        else if (t.hasClass('autocomplete-selected')) dosearch();
-        if (window.safari && t.is('a.tar')) {
-                safari.application.activeBrowserWindow.openTab().url = t.attr('href');
-                safari.self.hide();
-        }
-    })
-    */
     var fq=$('#fq');
+
+    $('#logout').text("Log out " + username);
 
     if(fq.length && fq.devbridgeAutocomplete)
     {
