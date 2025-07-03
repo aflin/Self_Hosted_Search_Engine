@@ -1,23 +1,23 @@
 body {
   font-family: Arial, sans-serif;
   margin: 0;
-  background-color: #f4f4f4;
-  color: #333;
+  background-color: white;
 }
 
 header {
-  background-color: #657cc2;
-  color: #fff;
-  padding: 20px 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background-color: white;
+  padding: 0px 0px;
+  justify-content: left;
   flex-wrap: wrap;
 }
 
 header img {
-  max-height: 80px;
-  margin-right: 20px;
+  height: 90px;
+  width:  135px;
+  margin-right: 15px;
+  float:left;
+  position:relative;
+  top:12px;
 }
 
 header .title-text {
@@ -36,64 +36,86 @@ header p {
 }
 
 nav {
-  background-color: #222;
-  padding: 10px 40px;
+  background-color: white;
+  padding: 10px 0px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
 }
 
 nav a {
-  color: #ccc;
+  color: #555;
   text-decoration: none;
-  margin: 0 10px;
+  margin-right: 20px;
 }
 
 nav a:hover {
-  color: #fff;
+  color: #111;
 }
 
 footer a {
-  color: #ccc;
+  color: #aaa;
   text-decoration: none;
   margin: 0 10px;
 }
 
 footer a:hover {
-  color: #fff;
+  color: #888;
 }
 
 main {
+  position: relative;
   padding: 40px;
   max-width: 800px;
-  margin: auto;
+  margin-left: 110px;
   background-color: #fff;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.swrap {
+    border: 1px solid #aaa;
+    width: calc( 100% - 172px);
+    display: inline-block;
+    height:40px;
+    max-width: 800px;
+    position:relative;
+    border-radius:13px;
+    overflow:hidden;
+}
+.divider {
+    width: 100%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    height: 1px;
+    background-color: #eee;
 }
 
 .search-box {
-  text-align: center;
   margin-bottom: 40px;
 }
 
 .search-box input[type="text"] {
-  width: 80%;
-  max-width: 500px;
+  width: calc( 100% - 100px);
   padding: 10px;
   font-size: 1em;
+  height: 20px;
+  border: none;
+  outline: none;
 }
 
 .search-box input[type="submit"] {
-  padding: 10px 20px;
+  padding: 10px 15px;
   font-size: 1em;
-  margin-left: 10px;
+  position:absolute;
+  right:0px;  
+  border: none;
+  height:40px;
+  background-color: #f8f8f8;
+  z-index: 99999;
 }
 
 footer {
   text-align: center;
   padding: 20px;
-  background-color: #111;
-  color: #aaa;
+  background-color: #f4f4f4;
+  color: #888;
   font-size: 0.9em;
 }
 
@@ -102,3 +124,101 @@ footer {
 .useremail {width:12ch;}
 .usernamecl {width: 12ch;}
 .chkbx {width:3ch;}
+
+
+.entry {
+  margin-top: 10px;
+  margin-bottom: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  position: relative;  
+}
+.info {
+  max-width: 75%;
+}
+.link {
+  font-size: 16pt;
+  font-family: "Arial", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  white-space:nowrap;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.link a {
+  text-decoration: none;
+}
+.link a:hover {
+  text-decoration: underline;
+}
+
+.subtext img {
+  width: 15px;
+  height: 15px;
+  vertical-align: top;
+  margin-right: 5px;
+}
+
+.subtext span {
+  font-family: "Arial", sans-serif;
+  font-weight: 400;
+  font-size: 9pt;
+  color: #ababab;
+}
+.description {
+  font-family: "Arial", sans-serif;
+  font-weight: 400;
+  font-size: 10pt;
+  color: #595959;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.thumb {
+    position:relative;
+    margin-top: 5px;
+    z-index: 100;
+}
+.hov {
+  border-radius: 10px;
+  width: 130px;
+  height:100px;
+  object-fit: cover;
+  position:absolute;
+}
+
+.ishov2 {
+  border-radius: 10px;
+  max-width: 350px;
+  max-height: 250px;
+  position: absolute;
+  bottom: 250px;
+  right: 150px;
+}
+.url-text{
+  width: calc( 100% - 30px );
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-top: 2px;
+}
+
+.tstamp{
+    display: inline-block;
+    white-space: nowrap;
+    margin-bottom:4px;
+    color: #76769f;
+    width: 100%;
+    text-align: right;
+}
+.autocomplete-suggestions {
+    border-top: none !important;
+    transform: translate(-1px,-10px);
+    padding-top: 10px;
+    border: 1px solid #aaa;
+    box-shadow:none;
+}
+.rico {left: -40px; color:red;}
+.rmcb {left: -25px;}

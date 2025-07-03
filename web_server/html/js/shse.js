@@ -1,45 +1,127 @@
+var scrollbarWidth;
+
+//https://stackoverflow.com/questions/13382516/getting-scroll-bar-width-using-javascript/13382873#13382873
+function getScrollbarWidth() {
+  // Creating invisible container
+  const outer = document.createElement('div');
+  outer.style.visibility = 'hidden';
+  outer.style.overflow = 'scroll'; // forcing scrollbar to appear
+  outer.style.msOverflowStyle = 'scrollbar'; // needed for WinJS apps
+  document.body.appendChild(outer);
+
+  // Creating inner element and placing it in the container
+  const inner = document.createElement('div');
+  outer.appendChild(inner);
+  
+  // Calculating difference between container's full width and the child width
+  const scrollbarWidth = (outer.offsetWidth - inner.offsetWidth);
+
+  // Removing temporary elements from the DOM
+  outer.parentNode.removeChild(outer);
+
+  return scrollbarWidth;
+    
+}
+
 function escapeHtml(text) {
     var div = document.createElement('div');
     div.innerText = text;
     return div.innerHTML;
 }
 
+function setCookie(name, value, days) {
+  var expires = "";
+  if(typeof value == 'object')
+      value=JSON.stringify(value);
+  if (days) {
+    var date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 3650));
+    expires = "; expires=" + date.toUTCString();
+  }
+  document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+
+function getCookie(name) {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for(let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') {
+      c = c.substring(1, c.length);
+    }
+    if (c.indexOf(nameEQ) === 0) {
+      var ret = c.substring(nameEQ.length, c.length);
+      try {
+          ret=JSON.parse(ret);
+      }catch(e){}
+      return ret;
+    }
+  }
+  return null;
+}
+
+
 function loadImage(img) {
     var t=new Image();
-    var url = img.attr('data-favico');
+    var url = img.attr('src');
     if(url) {
         t.onload=function() {
-            img.attr('src',url);
+            img.attr('src',url).addClass('imset');
+        }
+        t.onerror=function(){
+
+            img.css('display','none').addClass('imset');
         }
     } else {
-        url=img.attr('src');
-        t.onerror=function(){
-            img.attr('src','/images/home_website_start_house.svg');
-            img.removeClass('hov');
-        }
+        img.css('display','none').addClass('imset');
     }
-    console.log("checking: ", url);
     t.src=url;
+    setTimeout(function(img,t){
+        if(!img.hasClass('imset')) {
+            img.attr('src',"/images/home.ico");
+            t.src="";
+        }
+    },6000,img,t);
+}
+function loadIco(img) {
+    var t=new Image();
+    var url = img.attr('src');
+    if(url) {
+        t.onload=function() {
+            img.attr('src',url).addClass('imset');
+        }
+        t.onerror=function(){
+            img.attr('src',"/images/home.ico");
+        }
+    } else {
+        img.attr('src',home.ico).addClass('imset');
+    }
+    t.src=url;
+    setTimeout(function(img,t){
+        if(!img.hasClass('imset')) {
+            img.attr('src',"/images/home.ico").addClass('imset');
+            t.src="";
+        }
+    },3000,img,t);
+        
+        
 }
 
 function attachhov(){
     $('.hov').hover(function(){
-        var t=$(this),h,ho,bh=window.innerHeight+window.scrollY,top=0;
+        var t=$(this),h,top,bh=window.innerHeight+window.scrollY,bottom=25;
         var im= new Image();
+        $('.ishov2').remove();
         im.onload = function() {
-            var ht = (im.height<250)?im.height:250;
-            ho=t.offset();
             h=t.parent().find('.hov');
-            ho=h.offset();
-            ho.bottom=ho.top+ht;
-            if (ho.top<20) top = -ho.top + 20;
-            if (ho.bottom > bh) top = bh-ho.bottom;
-            t.after('<img class="ishov" style="top:'+top+'px;" src="'+t.attr('src')+'">');
+            top=h.offset().top - $(window).scrollTop();
+            if (top<280) bottom=top-255;
+            t.after('<img class="ishov2" style="bottom:'+bottom+'px;" src="'+t.attr('src')+'">');
         }
         $(im).addClass('hov');
         im.src=t.attr('src');
     },function(){
-        $('.ishov').remove();
+        $('.ishov2').remove();
     });
 }
 
@@ -72,7 +154,6 @@ function mktitles(){
             t.addClass('isvis');
             t.attr('title','click to hide database editing options');
             $('#delsel').show();
-            console.log('show');
         }
     });
 
@@ -118,14 +199,14 @@ function mktitles(){
         popup=$('.popup');
 
         $('.sitem:checked').each(function(i){
-            req.hash.push( $(this).closest('.resi').attr('data-hash') );
+            req.hash.push( $(this).closest('.entry').attr('data-hash') );
         });
 
         dodel(popup, req);
     });
     
     $('.rico').click(function(){
-        var t=$(this),r=t.closest('.resi'),h=r.attr('data-hash'),d=r.attr('data-dom'), req={};
+        var t=$(this),r=t.closest('.entry'),h=r.attr('data-hash'),d=r.attr('data-dom'), req={};
         var popup;
         if(d=="null") d=null;
         $('body').append('<div class="popup"><table><tr><td colspan=2><b>Delete Entry?</b><br><span style="font-size:10px;color:#07c">'+r.find('a').attr('href')+'</td></tr>'+
@@ -155,6 +236,26 @@ $(document).ready(function(){
     var mobile = /mobile/i.test(navigator.userAgent);
     var fq=$('#fq');
 
+/*
+    // prevent <main> from shifting when scrollbar appears
+    scrollbarWidth=getScrollbarWidth();
+    var obs=new ResizeObserver(function() {
+        var hasbar=(document.body.scrollHeight > window.innerHeight);
+        //console.log(hasbar);
+        var leftmar = parseFloat(window.getComputedStyle(document.getElementsByTagName('main')[0]).getPropertyValue('margin-left'));
+        //console.log("leftmar =",leftmar);
+        if(hasbar) {
+            if(leftmar*2 > scrollbarWidth)
+                document.getElementsByTagName('main')[0].style.left=(scrollbarWidth/2)+"px";
+            document.getElementsByTagName('main')[0].style.right="-"+(scrollbarWidth/2)+"px";
+        } else {
+            document.getElementsByTagName('main')[0].style.left="0px";
+            document.getElementsByTagName('main')[0].style.right="0px";
+        }
+
+    });
+    obs.observe(document.body);
+*/    
     $('#logout').text("Log out " + username);
 
     if(fq.length && fq.devbridgeAutocomplete)
@@ -183,108 +284,22 @@ $(document).ready(function(){
         });
 
     });
-    mktitles();
-    attachhov();
-    $('.fimage').each(function(){
-        loadImage($(this));
-    });
 
-	// HISTORY
+    // SEARCH PAGE
+    if ($('#showico').length) {
+        mktitles();
+        attachhov();
+        $('.hov').each(function(){
+            loadImage($(this));
+        });
+        $('.resico').each(function(){
+            loadIco($(this));
+        });
+    }
+
+	// HISTORY PAGE
     var dpicker = $("#datepicker");
-    var doclick=false;
-    var lastheat;
- 
-    function updatecal(dateText) {
-        if(!doclick) return;
-        var c=dateText.match(/(\d+)\/(\d+)\/(\d+)/);
-        //send computer localtime for chosen day in ms since epoch
-        var s = new Date(`${c[3]}-${c[1]}-${c[2]}T00:00:00`);
-        var e = new Date(`${c[3]}-${c[1]}-${c[2]}T23:59:59.999`);
-        console.log(s,e);
-        var resbox=$('#hres');
-        $.post({
-            url:'/apps/shse/hist.json',
-            data:{date:dateText, start:s.getTime(), end:e.getTime()},
-            success: function(data){
-                resbox.empty();
-                var res=data.res.rows;
-                var d=new Date(data.start);
-                var datestr = s.toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                resbox.append('<p><b>'+datestr+':</b></p>');
-                for(var i=0;i<res.length;i++){
-                    var r=res[i];
-                    var t =r.Title ? r.Title.replace(/\s+/,' ') : r.Url;
-                    var edate=new Date(r.Date);
-                    resbox.append(
-`<div data-hash="${r.Hash}" class="resi">
-    <span class="itemwrap">
-        <a class="url-a tar" href="${r.Url}" '" target="_blank">${t}</a>
-        <span class="timestamp">${edate.toLocaleTimeString()}</span>
-        <br>
-        <span class="abstract url-span">${r.Url}</span>
-    </span>
-</div>`);
-                }
-            }
-        }).fail(function(xhr, txt, err) {
-            alert("failed to get data from server: "+txt);
-        });
-        if(lastheat) setTimeout(function(){insertheat(lastheat);},50);            
-    };
-    function insertheat(data) {
-        var max=parseInt(data.max),i=0;
-        var rows=data.rows;
-        $('td[data-handler=selectDay]').each(function(){
-            var t=$(this).find('a');
-            var v = parseInt(rows[i])/max ;
-            v *= 100.0;
-            t.css('background',`rgb(101 124 194 / ${v}%)`);
-            i++;
-        });
-
-    }
-    function doheat(m,y){
-        setTimeout(function(){
-            // in monthchange, jquery ui returns wrong month when showing
-            // multiple months and clicking on arrows where 
-            // there is no movement.  Date doesn't change until after event,
-            // hence the timeout
-            var firstmonth=parseInt($('.ui-datepicker-month').val())+1;
-            var firstyear =parseInt($('.ui-datepicker-year').val());
-            $.post({
-                url:'/apps/shse/hist.json',
-                //data:{startm:, starty:y },
-                data:{startm:firstmonth, starty:firstyear },
-                success: function(data){
-                    insertheat(data);
-                    lastheat=data;
-                }
-            }).fail(function(xhr, txt, err) {
-                alert("failed to get data from server: "+txt);
-            });
-        },2);
-    }
- 
-    function monthchange(year,month) {
-        // year, month ignored.  See above.
-        doheat();
-    }
-
-    if(dpicker.length) {
-        dpicker.datepicker({
-            numberOfMonths: nMonths,
-            changeMonth: true,
-            changeYear: true,
-            maxDate: "+0D",
-            onChangeMonthYear: monthchange,
-            onSelect: updatecal,
-            stepMonths: 3
-        });
-
-        var firstdate=$('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
-        firstdate.click();
-        doheat();
-        doclick=true;
-    }
+    if(dpicker.length)
+        dohist(dpicker);
 });
 

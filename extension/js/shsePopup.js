@@ -1,4 +1,4 @@
-var user,gset;
+var user,gset,nMonths=3;
 
 var EMAIL_REGEX = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
@@ -261,6 +261,17 @@ function dosearch(skip,q) {
      ).fail(postfail);
 }
 
+// for hist.js cookie, use local storage in popup instead.
+function getCookie(name){
+    return gset[name];
+}
+
+function setCookie(name,val){
+    gset[name]=val;
+    var save={};
+    save[name]=val;
+    browser.storage.local.set(save);
+}
 
 $(document).ready(function(){
     var enable=$('#enable'),enableafter=false;
@@ -635,28 +646,15 @@ $(document).ready(function(){
         } else {
             $('#res').hide();
             $('#setbox').remove();
+
             $('body').append(
              `<div id="histbox" class="shbox">
                <div id="datepicker"></div>
+               <button class="groupby" style="visibility: visible;" id="groupby">Order by Date</button>
                <div id="hres"></div>
               </div>`);
-            $('#datepicker').datepicker({
-                numberOfMonths: nMonths,
-                changeMonth: true,
-                changeYear: true,
-                maxDate: "+0D",
-                onChangeMonthYear: monthchange,
-                onSelect: updatecal,
-                stepMonths: 3
-            });
-            var firstdate=$('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
-            firstdate.click();
-            doheat();
-            doclick=true;
-            if(gset.lastcaldate) {
-                $('#datepicker').datepicker("setDate", gset.lastcaldate);
-                updatecal(gset.lastcaldate);
-            }
+
+            dohist($('#datepicker'), 'https://'+gset.server,gset.user,gset.key);
         }
     });
 

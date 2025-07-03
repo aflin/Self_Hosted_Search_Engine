@@ -161,71 +161,66 @@ var htmlHeadfmt=`<!DOCTYPE html>
   <script src="/js/jquery-3.7.1.min.js"></script>
   <script src="/js/jquery-ui-1.13.2.min.js"></script>
   <script src="/js/shse.js"></script>
-  <link rel="stylesheet" href="/css/themes/pepper-grinder/jquery-ui.css">
-  <link rel="stylesheet" href="/css/shse.css">
+  <link rel="stylesheet" href="/css/themes/current/jquery-ui.css">
   <link rel="stylesheet" href="/css/common.css">
+  <link rel="stylesheet" href="/css/shse.css">
   <script>var username="%s";</script>
 `;
 
 var endHtmlHead="</head>";
 var htmlBody="<body>";
+
 var htmlTop=`
   <header>
     <img src="/images/logo.png" alt="Self Hosted Search Engine Logo">
-    <div class="title-text">
-      <h1>Self Hosted Search Engine</h1>
-      <p>Search your web sessions, your way. Privately. Locally.</p>
-    </div>
-  </header>
-
-  <nav>
-    <div>
-      <a href="/apps/shse/user.html">Home</a>
-      <a href="/apps/shse/history.html">History</a>
-      <a href="#">Docs</a>
-      <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
-    </div>
-    <div>
-      <a id="logout" href="login.html?logout=1">Log out</a>
-    </div>
-  </nav>
+      <nav>
+        <div>
+          <a href="/apps/shse/user.html">Home</a>
+          <a href="/apps/shse/history.html">History</a>
+          <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
+        </div>
+        <div>
+          <a id="logout" href="login.html?logout=1">Log out</a>
+        </div>
+      </nav>
 `;
 
 var adminHtmlTop=`
   <header>
     <img src="/images/logo.png" alt="Self Hosted Search Engine Logo">
-    <div class="title-text">
-      <h1>Self Hosted Search Engine</h1>
-      <p>Search your web sessions, your way. Privately. Locally.</p>
-    </div>
-  </header>
-
-  <nav>
-    <div>
-      <a href="/apps/shse/user.html">Home</a>
-      <a href="/apps/shse/history.html">History</a>
-      <a href="#">Docs</a>
-      <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
-    </div>
-    <div>
-      <a href="/apps/shse/admin.html">Users</a>
-      <a href="/apps/shse/certs.html">Certificates</a>
-      <a id="logout" href="login.html?logout=1">Log out</a>
-    </div>
-  </nav>
+      <nav>
+        <div>
+          <a href="/apps/shse/user.html">Home</a>
+          <a href="/apps/shse/history.html">History</a>
+          <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
+        </div>
+        <div>
+          <a href="/apps/shse/admin.html">Users</a>
+          <a href="/apps/shse/certs.html">Certificates</a>
+          <a id="logout" href="login.html?logout=1">Log out</a>
+        </div>
+      </nav>
 `;
-var htmlMain="<main>";
 var htmlSearch=`
     <script src="/js/jquery.autocomplete.min.js"></script>
     <div class="search-box">
       <form action="/apps/shse/search.html" method="get">
-        <input type="text" autocomplete="off" id="fq" name="q" `;
+        <div class="swrap">
+          <input type="text" autocomplete="off" id="fq" name="q" `;
 
 var endHtmlSearch=`placeholder="Search" required>
-        <input type="submit" value="Search">
+          <input type="submit" value="Search">
+        </div>
       </form>
     </div>
 `;
+
+var htmlTopend=`
+  <div class="divider"><div>
+  </header>
+`;
+
+var htmlMain="<main>";
 
 var htmlAbout=`
     <section>
@@ -247,7 +242,6 @@ var htmlAbout=`
         <li>Easy server deployment on Linux and macOS</li>
       </ul>
     </section>
-  </main>
 `;
 
 var endHtmlMain="</main>";
@@ -341,10 +335,10 @@ ${head}
 ${endHtmlHead}
 ${htmlBody}
 ${top}
-${htmlMain}
 ${htmlSearch}value="${q}" ${endHtmlSearch}
+${htmlTopend}
+${htmlMain}
 `);
-
     if(p.q) {
         res=dosearch(p.q,user,skip);
         var total = res.countInfo.indexCount;
@@ -367,30 +361,51 @@ ${htmlSearch}value="${q}" ${endHtmlSearch}
                 <button style="padding: 2px 5px 0px 5px;border:1px solid #b00; border-radius:7px; position:relative;top:0px;left:6px;" id="rmselected">Remove Select Items</button>
             </span>
         </span>
-        <span style="float:right">Results ${skip+1}-${skip+res.rowCount} of ${res.countInfo.indexCount}</span>
+        <span style="${res.rowCount?'float:right':'width:100%;text-align:center;display: inline-block;font-size: 16px;'}">${cntinfo}</span>
     </div>`);
         for (var i=0;i<res.rows.length;i++) {
 			var r=res.rows[i];
-			var favico=null, ico=r.image;
+			var favico, ico=r.image;
 			var icl = r.image? " hov" : '';
 			var d= new Date(0);
 			d.setUTCSeconds(parseInt(r.last));
 
+			favico=r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico';
+
+			/*
 			if(!r.image) {
 			    ico='/images/home_website_start_house.svg'
-			    favico=r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico';
 			    //icl = icl + ' cfav';
             }
 			req.put('<div data-hash="'+r.hash+'" data-dom="'+r.dom+'" id="r'+i+'" class="resi"><span class="imgwrap">'+ricos+
                 '<img class="fimage'+icl+'" src="'+ico+'"'+
                 (favico?' data-favico="'+favico+'"':'') + '></span>'+
                 '<span class="itemwrap"><span class="abstract nowrap"><a class="url-a tar" ' +
-                /* (browser.t=='f'?'style="width:calc( 100% - 165px )" ':'') + */
                 'target="_blank" href="'+r.url+'">'+
                 sprintf("%H",r.title.replace(/\s+/g,' '))+'</a><span class="timestamp">('+d.toLocaleString()+
                 ')</span></span><br><span class="abstract url-span">'+r.url+
                 '</span></span><br><span class="abstract">'+r.abstract+"</span></div>"
 			);
+			*/
+			req.put(`
+<section class="entry" data-hash="${r.hash}" data-dom="${r.dom}">
+  ${ricos}
+  <div class="info">
+    <div class="link">
+      <a href="${r.url}">${sprintf("%H",r.title.replace(/\s+/g,' '))}</a>
+    </div>
+    <div class="subtext">
+      <img src="${favico}" class="resico" />
+      <span class="url-text">&gt; ${r.url}<br>
+      </span>
+    </div>
+    <div class="description">${r.abstract}</div>
+  </div>
+  <div class="thumb">
+      <span class="tstamp">(${dateFmt('%m/%d/%Y %H:%M',d)})</span><br>`
+      + ( r.image ? `<img src=${r.image} class="hov">` : '' ) +
+  `</div>
+</section>`);
         }
         req.put('</div>');
     }
@@ -402,32 +417,33 @@ ${htmlSearch}value="${q}" ${endHtmlSearch}
     var curpage = skip/10 + 1;
     var npages = 1 + Math.floor(total/10);
     var ppages;
-    if(skip < 55) {
-        if(curpage>1)
-            pag=`<span class="ppag"><a href="${surl}&sk=${skip-10}">Prev</a></span>`;
-        if(npages > 10) ppages=10;
-        else ppages=npages;
-    } else {
-        pag=`<span class="ppag"><a href="${surl}&sk=${skip-10}">Prev</a></span>`+
-            `<span class="pag"><a href="${surl}">1</a></span>` +
-            '<span class="pag">..</span>';
-        ppages=curpage+3;
-        if(ppages>npages)ppages=npages;
-        i=curpage-5;
-    }
+    if(total>0) {
+        if(skip < 55) {
+            if(curpage>1)
+                pag=`<span class="ppag"><a href="${surl}&sk=${skip-10}">Prev</a></span>`;
+            if(npages > 10) ppages=10;
+            else ppages=npages;
+        } else {
+            pag=`<span class="ppag"><a href="${surl}&sk=${skip-10}">Prev</a></span>`+
+                `<span class="pag"><a href="${surl}">1</a></span>` +
+                '<span class="pag">..</span>';
+            ppages=curpage+3;
+            if(ppages>npages)ppages=npages;
+            i=curpage-5;
+        }
 
-    for (;i<ppages;i++) {
-        if(i==curpage-1)
-            pag+=`<span class="pag">${i+1}</span>`;
-        else if(!i)
-            pag+=`<span class="pag"><a href="${surl}">1</a></span>`
-        else
-            pag+=`<span class="pag"><a href="${surl}&sk=${i*10}">${i+1}</a></span>`
+        for (;i<ppages;i++) {
+            if(i==curpage-1)
+                pag+=`<span class="pag">${i+1}</span>`;
+            else if(!i)
+                pag+=`<span class="pag"><a href="${surl}">1</a></span>`
+            else
+                pag+=`<span class="pag"><a href="${surl}&sk=${i*10}">${i+1}</a></span>`
+        }
+        skip+=10;
+        if(skip<total)
+            pag+=`<span class="npag"><a href="${surl}&sk=${skip}">Next</a></span>`;
     }
-    skip+=10;
-    if(skip<total)
-        pag+=`<span class="npag"><a href="${surl}&sk=${skip}">Next</a></span>`;
-
     return {html:`
 <p><center>${pag}</center></p>
 ${endHtmlMain}
@@ -453,9 +469,11 @@ function userpage(req){
 ${head}
 ${endHtmlHead}
 ${htmlBody}
+
 ${top}
-${htmlMain}
 ${htmlSearch}${endHtmlSearch}
+${htmlTopend}
+${htmlMain}
 
 ${htmlAbout}
 
@@ -552,7 +570,7 @@ function histdata(req) {
 
 //    return {txt: `select * from ${user}_history where Date >= ? and Date < ? order by Date; ${parseInt(p.start)/1000} ${(parseInt(p.end)+1)/1000}`}
 
-    var res=sql.exec(`select * from ${user}_history where Date >= ? and Date < ? order by Date DESC;`,
+    var res=sql.exec(`select bintohex(Hash) Hash, Date, Day, Url, Title from ${user}_history where Date >= ? and Date < ? order by Date DESC;`,
               {maxRows: -1},[parseInt(p.start)/1000, (parseInt(p.end)+1)/1000]);
 
     return({json:{res:res, start:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',start), end:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',end)}});
@@ -580,13 +598,17 @@ ${head}
 <script>
     var nMonths=${nMonths};
 </script>
+<script src="/js/hist.js"></script>
 ${endHtmlHead}
 ${htmlBody}
+
 ${top}
+${htmlSearch}${endHtmlSearch}
+${htmlTopend}
 ${htmlMain}
 
-${htmlSearch}value="${q}" ${endHtmlSearch}
 <div id="datepicker"></div>
+<button class="groupby" style="visibility: hidden;" id="groupby">Order by Date</button>
 <div id="hres"></div>
 `);
 
@@ -1290,8 +1312,8 @@ function store (req) {
     if(res.rowCount == 0) {
         if( sql.errMsg.indexOf('insert duplicate value') > -1 ) {
             res = sql.exec(`update ${p.user}_pages set Last='now', LastV='now', Numvisits = Numvisits + 1,
-                            Title=?, Text=? where Hash=?`,
-                            [p.title, p.text, hash]
+                            Image=?, Title=?, Text=? where Hash=?`,
+                            [p.img, p.title, p.text, hash]
                           );
             if(res.rowCount == 0)
                 return makeReply( {json: {status:`error updating: ${sql.errMsg}`}} );
@@ -1415,6 +1437,7 @@ function autocomp(req){
     if(space == -1)
     {
         word=q;
+        sql.set({"indexaccess":true});
         res=sql.exec(
             `select Word value from ${user}_pages_Text_ftx where Word matches ? order by Count DESC`,
             [word.toLowerCase()+'%']
