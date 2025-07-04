@@ -649,9 +649,15 @@ $(document).ready(function(){
 
             $('body').append(
              `<div id="histbox" class="shbox">
-               <div id="datepicker"></div>
-               <button class="groupby" style="visibility: visible;" id="groupby">Order by Date</button>
-               <div id="hres"></div>
+                <div id="datepicker"></div>
+                <div>
+                    <button class="groupby" style="visibility: hidden;" id="groupby">Order by Date</button>
+                    <span class="swrap2">
+                      <input type="text" spellcheck="false" autocomplete="off" id="dq" name="dq" placeholder="Domain Search">
+                      <input id="dsearch" type="submit" value="Search">
+                    </span>
+                </div>
+                <div id="hres"></div>
               </div>`);
 
             dohist($('#datepicker'), 'https://'+gset.server,gset.user,gset.key);

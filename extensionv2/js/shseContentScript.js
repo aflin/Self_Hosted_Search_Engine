@@ -146,7 +146,15 @@ function infobox(excluded) {
             '#FF .FF-square{background-position-y:0px}#FF .FF-circle{background-position-y:-32px}#FF .FF-play{background-position-y:-64px}#FF .FF-pause{background-position-y:-96px}'+
             '#FF .FF-gray{background-position-x:0px;}#FF .FF-green{background-position-x:-32px}#FF .FF-red{background-position-x:-64px}#FF .FF-white{background-position-x:-100px}'+
             '#FF .FF-green-cam{width:48px;background-position-x:-48px;background-position-y:-160px;}#FF .FF-black-cam{width:48px;background-position-x:0px;background-position-y:-160px;}'+
-            '#FF .FF-oc{background-position-y:-128px;width:12px;}#FF .FF-close-gray{background-position-x:0}#FF .FF-close-green{background-position-x:-12px}#FF .FF-close-red{background-position-x:-24px}#FF .FF-open-gray{background-position-x:-36px}#FF .FF-open-green{background-position-x:-48px}#FF .FF-open-red{background-position-x:-60px}'+
+            `#FF .FF-oc{background-position-y:-128px;width:12px;}
+             #FF .FF-close.FF-gray{background-position-x:0}
+             #FF .FF-close.FF-green{background-position-x:-12px}
+             #FF .FF-close.FF-red{background-position-x:-24px}
+             #FF .FF-open.FF-gray{background-position-x:-36px}
+             #FF .FF-open.FF-green{background-position-x:-48px}
+             #FF .FF-open.FF-red{background-position-x:-60px}`+
+            
+            
             '#FF .FF-del{width:48px;background-position-x:-72px;background-position-y:-128px;}'+
             '#FF  {width: 200px;border:1px solid rgb(221, 221, 221);background-color:rgba(255, 255, 255, 0.8);}'+
             '#FF.FF_collapsed {width:16px; border:transparent; background-color:transparent}'+
@@ -158,7 +166,7 @@ function infobox(excluded) {
             '<div class="FF-action FF-ico FF-black-cam" title="click to manually upload and index text currently on this page" id="FF_snapshot" style="'+bdivstyle+'"></div>'+
             '<div class="FF-action FF-ico FF-pause FF-gray" id="FF_pause" title="click to pause auto recording in all tabs" style="'+bdivstyle+'"></div>'+
             '<div class="FF-action FF-ico FF-del  FF-hidden2" id="FF_delete" title="click to delete this page from your database" style="'+bdivstyle+'"></div>'+
-            '<div id="FF_collapse" class="FF-ico FF-oc FF-close-green" title="expand/collapse this infobox" style="cursor:pointer;position:absolute;right:0px;top:0px;"></div>'+
+            '<div id="FF_collapse" class="FF-ico FF-oc FF-close FF-green" title="expand/collapse this infobox" style="cursor:pointer;position:absolute;right:0px;top:0px;"></div>'+
         '</div>');
 
     
@@ -195,8 +203,8 @@ function infobox(excluded) {
                   del.hide();
               else
                 update_status({
-                    color:'red',
-                    blink:true, 
+                    color: 'red',
+                    blink: true, 
                     msg: 'Failed to delete page'
                 });   
               
@@ -217,7 +225,7 @@ function infobox(excluded) {
         });   
         pause.attr('title','click to enable auto-recording in all tabs');
         ccol='gray';
-        a.removeClass('FF-close-green').addClass('FF-close-gray');
+        a.removeClass('FF-green').addClass('FF-gray');
     }
     
     pause.click(function(){
@@ -252,21 +260,20 @@ function infobox(excluded) {
             pause.attr('title','click to enable auto recording in all tabs');
             ccol='gray';
         }
-        a.removeClass('FF-close-gray FF-close-green').addClass('FF-close-'+ccol);
+        a.removeClass('FF-gray FF-green').addClass('FF-'+ccol);
     });
     
     function setCollapse(state,save) {
-        a.removeClass('FF-open-gray FF-open-red FF-open-green FF-close-gray FF-close-red FF-close-green');
         if (!state) {
             //a.html('&#x2771;');
-            a.addClass('FF-close-'+ccol);
+            a.addClass('FF-close').removeClass('FF-open');
             box.css('width','200px');
             box.removeClass('FF_collapsed');
             if(save) browser.storage.local.set({ibcollapsed:false});
             buttons.removeClass('FF-hidden');            
         } else {
             //a.html('&#x2770;');    
-            a.addClass('FF-open-'+ccol);
+            a.addClass('FF-open').removeClass('FF-close');
             box.css('width','16px');
             box.addClass('FF_collapsed');
             if(save) browser.storage.local.set({ibcollapsed:true});
@@ -275,7 +282,7 @@ function infobox(excluded) {
     }
     
     
-    setCollapse(settings.ibcollapsed);
+    setCollapse(settings.ibcollapsed,false);
 
     a.click(function() {
         if (box.hasClass('FF_collapsed') )
@@ -287,7 +294,7 @@ function infobox(excluded) {
     if(!excluded && !settings.manualOnly) {
         update_status({
             color:'green',
-            blink:true,
+            blink: true,
             message:"saving to server"
         });
     }
@@ -340,7 +347,7 @@ var blinking=false;
 function update_status (obj) {
     var rec=$('#FF_record'), infobox=$('#FF');
     var colorclass = "FF-" + obj.color;
-    var opencloseclass = settings.manualOnly ? "FF-close-gray":"FF-close-"+obj.color;
+    var opencloseclass = settings.manualOnly ? "FF-gray":"FF-"+obj.color;
     var ib_openclose = $('#FF_collapse');
 
     if(obj.shape == 'circle')
@@ -359,15 +366,14 @@ function update_status (obj) {
     if(obj.msg)
         rec.attr("title", obj.msg);
 
-    if(infobox.hasClass('FF_collapsed'))
-        opencloseclass = "FF-open-" + obj.color;
+//    if(infobox.hasClass('FF_collapsed'))
+//        opencloseclass = "FF-" + obj.color;
 
-    ib_openclose.removeClass('FF-open-gray FF-open-red FF-open-green FF-close-gray FF-close-red FF-close-green')
+    ib_openclose.removeClass('FF-gray FF-red FF-green')
         .addClass(opencloseclass);
 
     rec.removeClass('FF-white FF-green FF-gray FF-red');
     rec.addClass(colorclass);
-console.log(obj);
     if(!obj.blink || colorclass=='FF-white') {
         blinking=false;
         return;
@@ -375,7 +381,7 @@ console.log(obj);
 
     //make circle/square icon blink on/off
     blinking=true;
-
+    var cnt=0;
     ivl =setInterval(function(){
             //exit blinking if update_status called again with blink!=true.
             if( !blinking ) {
@@ -383,10 +389,18 @@ console.log(obj);
                 ivl=null;
                 return;
             }
+            if(cnt==0) {
+                ib_openclose.removeClass('FF-white FF-green FF-gray FF-red').addClass(colorclass);
+            }
+            cnt++;
+            if(cnt>29)
+                blinking=false;
             // toggle classes to make icons blink on/off
             rec.toggleClass(colorclass + ' FF-white');
-console.log("toggle");
-            ib_openclose.toggleClass(opencloseclass + ' FF-white');
+            if(ib_openclose.hasClass('FF-white'))
+                ib_openclose.addClass(opencloseclass).removeClass('FF-white');
+            else
+                ib_openclose.addClass('FF-white').removeClass(opencloseclass);
         },500
     );
 }
@@ -930,7 +944,7 @@ function get_page_info(){
                         setTimeout( function() {
                             if (!settings.manualOnly)
                                 savepage(function(){
-                                    console.log("SAVED");
+                                    //console.log("SAVED");
                                     del.removeClass('FF-hidden2');
                                 });
                         } ,2000);

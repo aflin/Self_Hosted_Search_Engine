@@ -1,6 +1,76 @@
 #!/usr/bin/env rampart
 rampart.globalize(rampart.utils);
 
+var urlutil=require('rampart-url');
+
+// function to extract a proper domain, removing any subdomains
+// but respecting public suffix list.  suffix list is loaded in web_server_conf.js
+// returns urlutil.components with added 'domain' property, if properly extracted.
+function getDomain(url){
+    var i=0, t, c
+    
+    if(/^file:\/\/\//.test(url))
+        return {domain:'<filesystem>'}
+
+    c=urlutil.components(url);
+    if(!c || !c.host)
+        return;
+
+    var d=c.host;
+
+    //ipv4 addr
+    var m=d.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+    if(m && m.length==5){
+        for(i=1;i<m.length;i++) {
+            t=parseInt(m[i]);
+            if(t>255 || t<0)
+                break;
+        }
+        if(i==5) {
+            c.domain=d;
+            return c;
+        }
+    }
+
+    //ipv6 address
+    m=d.match(/^\[(?:[0-9a-fA-F]{1,4}:+){2,7}:?[0-9a-fA-F]{1,4}\]$/);
+    if(m && m.length) {
+        c.domain=d;
+        return c;
+    }
+
+    if(pslnots[d])
+        return d;
+
+    var res, tdom, comp = d.split('.');
+
+    // localhost and the like
+    if(comp.length==1) {
+        c.domain=d;
+        return c;
+    }
+
+    var longest, level;
+
+    for (i=comp.length-1; i>-1; i--){
+        tdom = tdom ? `${comp[i]}.${tdom}`: comp[i];
+        res=psl[tdom];
+        if(res){
+            if(res=='y' && i) {
+                longest=comp[i-1] + '.' + tdom;
+                level=i-1;
+            } else {
+                longest=tdom;
+                level=i;
+            }
+        }
+    }
+
+    if(level)
+        c.domain=comp[level-1] + '.' + longest;
+    return c;
+}
+
 var cookie_expiration=86400;
 
 //for use from command line
@@ -86,11 +156,10 @@ function makeUserTables(tbname) {
         }
     }
 
-    // turn indexmeter off eventually
     if(!indexExists(`${tbname}_pages_Text_ftx`)) {
         sql.exec(`create fulltext index ${tbname}_pages_Text_ftx on ${tbname}_pages(Text)
             WITH WORDEXPRESSIONS ` +
-            ```('[\alnum\x80-\xFF]{2,99}', '[\alnum\x80-\xFF$<>%@\-_+]{2,99}')INDEXMETER 'on';```
+            ```('[\alnum\x80-\xFF]{2,99}', '[\alnum\x80-\xFF$<>%@\-_+]{2,99}');```
         );
         if(!indexExists(`${tbname}_pages_Text_ftx`)) {
             fprintf(stderr, `error creating ${tbname}_pages_Text_ftx: %s\n`, sql.errMsg);
@@ -100,7 +169,7 @@ function makeUserTables(tbname) {
 
     if(!tableExists(`${tbname}_history`)) {
         sql.exec(`create table ${tbname}_history (Hash byte(20), Date date, Day dword,
-                  Url varchar(128), Label varchar(16), Title varchar(64));`);
+                  Url varchar(128), Dom varchar (32), Label varchar(16), Title varchar(64));`);
         if(!tableExists(`${tbname}_history`)) {
             fprintf(stderr, `error creating ${tbname}_history: %s\n`, sql.errMsg);
             return {error: sprintf(`error creating ${tbname}_history: %s`, sql.errMsg)};
@@ -132,6 +201,14 @@ function makeUserTables(tbname) {
         }
     }
 
+    if(!indexExists(`${tbname}_history_Dom_x`)) {
+        sql.exec(`create index ${tbname}_history_Dom_x on ${tbname}_history(Dom);`);
+        if(!indexExists(`${tbname}_history_Dom_x`)) {
+            fprintf(stderr, `error creating ${tbname}_history_Dom_x: %s\n`, sql.errMsg);
+            return {error: sprintf(`error creating ${tbname}_history_Dom_x: %s`, sql.errMsg)};
+        }
+    }
+//create fulltext index aaron_history_Dom_ftx on aaron_history(Dom) WITH WORDEXPRESSIONS ('[\\alnum\\x80-\\xFF\\.]{2,99}')"
     if(!tableExists(`${tbname}_heatstats`)) {
         sql.exec(`create table ${tbname}_heatstats (Day dword, Cnt dword)`);
         if(!tableExists(`${tbname}_heatstats`)) {
@@ -196,7 +273,7 @@ var adminHtmlTop=`
         </div>
         <div>
           <a href="/apps/shse/admin.html">Users</a>
-          <a href="/apps/shse/certs.html">Certificates</a>
+          ${serverConf.httpOnly?'':'<a href="/apps/shse/certs.html">Certificates</a>'}
           <a id="logout" href="login.html?logout=1">Log out</a>
         </div>
       </nav>
@@ -392,7 +469,7 @@ ${htmlMain}
   ${ricos}
   <div class="info">
     <div class="link">
-      <a href="${r.url}">${sprintf("%H",r.title.replace(/\s+/g,' '))}</a>
+      <a target="_blank" href="${r.url}">${sprintf("%H",r.title.replace(/\s+/g,' '))}</a>
     </div>
     <div class="subtext">
       <img src="${favico}" class="resico" />
@@ -518,12 +595,32 @@ function heatdata(req,p,user) {
     today=res.d;
 
     if(enddate > today) enddate=today;
+    rows=[];
 
     //how many days should we have?
-    var expected=(enddate - startdate);
+    var expected=(enddate - startdate) + 1;
+
+    // no caching in heatstats if dom
+    if(p.dom) {
+        rows[expected-1]=0;
+        sql.exec(`select Day Day, count(Day) Cnt from ${user}_history 
+                    where Day >= ? and Day <= ? and Dom=? group by Day order by Day`,
+            [startdate,enddate,p.dom],
+            function(row,i) {
+                rows[row.Day-startdate]=row.Cnt;
+            },
+            {maxRows:-1}
+        );
+        for (i=0;i<expected;i++) {
+            if(!rows[i])
+                rows[i]=0;
+            else if(rows[i]>max)
+                max=rows[i]
+        }
+        return {json: {rows:rows,max:max}};
+    }
 
     //get them from heatstat table
-    rows=[];
     res = sql.exec(`select Day, Cnt from ${user}_heatstats where Day >= ? and Day <= ?`,
         [startdate, enddate], {maxRows:-1},
         function(row) {
@@ -550,6 +647,25 @@ function heatdata(req,p,user) {
     return {json: {rows:rows,max:max}};
 }
 
+function bydom(req, p, user) {
+
+    var startdate=parseInt(p.start)/1000, enddate=(parseInt(p.end)+1)/1000;
+    var res=sql.one(`select count(Dom) cnt from ${user}_history
+                        where Date >= ? and Date < ? and Dom=?`,
+                        [startdate, enddate, p.dom]);
+    var cnt=res.cnt;
+
+    if(cnt > 2000) {
+        return {json:{res:[], nrows: cnt, displayLazy:true}}
+    }
+    var res=sql.exec(`select bintohex(Hash) Hash, Date, Dom, Day, Url, Title from ${user}_history
+                        where Date >= ? and Date < ? and Dom=? order by Date DESC;`,
+              {maxRows: -1},[parseInt(p.start)/1000, (parseInt(p.end)+1)/1000, p.dom]);
+
+    return({json:{res:res, nrows: cnt}});
+    
+}
+
 function histdata(req) {
     var p=req.params;
     var user;
@@ -559,10 +675,35 @@ function histdata(req) {
     else
         user=sres.user;
 
+    if(p.getFirst && p.dom) {
+        var res = sql.one(`select Date from ${user}_history where Dom=?dom order by Day`,p);
+        if(res)
+            return{json:{start:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',res.Date)}};
+        else
+            return{json:{}};
+    }
+
+    if(p.getLast && p.dom) {
+        var res = sql.one(`select Date from ${user}_history where Dom=?dom order by Day DESC`,p);
+        if(res)
+            return{json:{end:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',res.Date)}};
+        else
+            return{json:{}};
+    }
+
     if(p.startm && p.starty)
         return heatdata(req,p,user);
 
-    var d=autoScanDate(p.date + ' ' + p.off);
+    if(!p.start || !p.end)
+        return { json: {} }
+
+    if(p.dom)
+        return bydom(req,p,user);
+
+    if(!p.date)
+        return { json: {} }
+
+    var d=autoScanDate(p.date);
     var start = dateFmt('%Y-%m-%d', d.date);
     var end = start + ' 23:59:59';
 
@@ -570,10 +711,10 @@ function histdata(req) {
 
 //    return {txt: `select * from ${user}_history where Date >= ? and Date < ? order by Date; ${parseInt(p.start)/1000} ${(parseInt(p.end)+1)/1000}`}
 
-    var res=sql.exec(`select bintohex(Hash) Hash, Date, Day, Url, Title from ${user}_history where Date >= ? and Date < ? order by Date DESC;`,
+    var res=sql.exec(`select bintohex(Hash) Hash, Date, Dom, Day, Url, Title from ${user}_history where Date >= ? and Date < ? order by Date DESC;`,
               {maxRows: -1},[parseInt(p.start)/1000, (parseInt(p.end)+1)/1000]);
 
-    return({json:{res:res, start:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',start), end:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',end)}});
+    return({json:{res:res, start:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',start), end:dateFmt('%Y-%m-%dT%H:%M:%S.999Z',end)}});
 }
 
 function historypage(req) {
@@ -608,7 +749,13 @@ ${htmlTopend}
 ${htmlMain}
 
 <div id="datepicker"></div>
-<button class="groupby" style="visibility: hidden;" id="groupby">Order by Date</button>
+<div>
+    <button class="groupby" style="visibility: hidden;" id="groupby">Order by Date</button>
+    <span class="swrap2">
+      <input type="text" spellcheck="false" autocomplete="off" id="dq" name="dq" placeholder="Domain Search">
+      <input id="dsearch" type="submit" value="Search">
+    </span>
+</div>
 <div id="hres"></div>
 `);
 
@@ -1305,7 +1452,6 @@ function store (req) {
     p.text = p.title + "\n" + p.furl + "\n" + p.text;
 
     var hash=crypto.sha1(p.furl, true);
-
     var res = sql.exec(`insert into ${p.user}_pages values (?,?,?,?, ?,?,?, ?,?,?);`,
         [hash, 'now', 'now', 1, p.dom, p.furl, p.img, p.title, '', p.text]  );
 
@@ -1323,8 +1469,11 @@ function store (req) {
     }
 
     if(p.history) {
+        var comp = getDomain(p.furl);
+        if(comp)
+            p.dom=comp.domain? comp.domain:comp.host;
         p.hash=hash;
-        sql.one(`insert into ${p.user}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, '', ?title )`,p);
+        sql.one(`insert into ${p.user}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, ?dom, '', ?title )`,p);
     }
     return makeReply( {json: {status:'ok'}} );
 }
@@ -1385,6 +1534,7 @@ function delentry(req){
 
 function checkentry(req) {
     var p=req.params;
+
     if(! checkkey( p.user, p.key) )
         return makeReply( {json: {status:'bad key'}} );
 
@@ -1397,7 +1547,10 @@ function checkentry(req) {
     var herrorMsg = false, herror=false;
 
     if(p.skip != "true") {
-        herror = !sql.one(`insert into ${p.user}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, '', ?title )`,p);
+        var comp = getDomain(p.furl);
+        if(comp)
+            p.dom=comp.domain? comp.domain:comp.host;
+        herror = !sql.one(`insert into ${p.user}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, ?dom, '', ?title )`,p);
         if(herror) herrorMsg = sql.errMsg;
     }
 
@@ -1407,6 +1560,7 @@ function checkentry(req) {
     if(!res)
         res = {saved:false};
     else {
+        printf("three\n");
         sql.one(`update ${p.user}_pages set LastV='now', Numvisits=Numvisits+1 where Hash=?`, [p.hash]);
         res.saved = true;
     }
@@ -1438,10 +1592,14 @@ function autocomp(req){
     {
         word=q;
         sql.set({"indexaccess":true});
-        res=sql.exec(
+        if(p.dom)
+            res=sql.exec(
+            `select Word value from ${user}_history_Dom_ftx where Word matches ? order by Count DESC`,
+            [word.toLowerCase()+'%']);
+        else
+            res=sql.exec(
             `select Word value from ${user}_pages_Text_ftx where Word matches ? order by Count DESC`,
-            [word.toLowerCase()+'%']
-        );
+            [word.toLowerCase()+'%']);
         cwords=res.rows;
     }
     else
@@ -1454,10 +1612,14 @@ function autocomp(req){
         if(word.length < suggestion_word_min_length)
             return makeReply({json: { "suggestions":  [q] } });
 
-        res=sql.exec(
-            `select Word value from ${user}_pages_Text_ftx where Word matches ? order by Count DESC`,
-            [word.toLowerCase()+'%']
-        );
+        if(p.dom)
+            res=sql.exec(
+                `select Word value from ${user}_history_Dom_ftx where Word matches ? order by Count DESC`,
+                [word.toLowerCase()+'%']);
+        else
+            res=sql.exec(
+                `select Word value from ${user}_pages_Text_ftx where Word matches ? order by Count DESC`,
+                [word.toLowerCase()+'%']);
         cwords = res.rows;
 
         for( var i=0; i<cwords.length; i++)
@@ -1470,27 +1632,7 @@ function autocomp(req){
     return makeReply( {json: {suggestions: cwords}});
 }
 
-if(module && module.exports)
-    module.exports = {
-        //ajax endpoints
-        "store.json":   store,
-        "results.json": results,
-        "delete.json":  delentry,
-        "check.json":   checkentry,
-        "autocomp.json":autocomp,
-        "cred.json":    getcred,
-        "admin.json":   adminpage,
-        "certs.json":   certpage,
-        "hist.json":    histdata,
-        //web pages
-        "history.html": historypage,
-        "search.html":  searchpage,
-        "login.html":   loginpage,
-        "user.html":    userpage,
-        "certs.html":   certpage,
-        "admin.html":   adminpage
-    }
-else {
+if(!module || !module.exports) {
     function die(msg) {
         fprintf('%s\n',msg);
         process.exit(1);
@@ -1529,10 +1671,39 @@ else {
             }
             printf('%-*s    %-*s    %s    %s\n', amax, row.Acctid, emax, row.email, type, row.passhash);
         }
+    } else if (args[2] == 'makeUserdb') {
+        var user=args[3];
+        if(!user) 
+            die("missing user name after makeUserdb\n");
+        var res = sql.one("select Acctinfo.$.email email from accounts where Acctid=?", [user]);
+        if(!res)
+            sql.one("insert into accounts values (COUNTER, ?, 'u', ?)", [user, {}]);
+        makeUserTables(user);
     } else{
         printf("This is the main script used by the server.\nOptions for command line use:\n"+
                 "    %s %s updateUser <existingUsername> <newPassword>\n" +
-                "    %s %s listUsers\n", args[0], args[1], args[0], args[1]);
+                "    %s %s listUsers\n" +
+                "    %s %s makeUserdb <username>\n", args[0], args[1], args[0], args[1], args[0], args[1]);
         //console.log(serverConf);
+    }
+} else {
+    module.exports = {
+        //ajax endpoints
+        "store.json":   store,
+        "results.json": results,
+        "delete.json":  delentry,
+        "check.json":   checkentry,
+        "autocomp.json":autocomp,
+        "cred.json":    getcred,
+        "admin.json":   adminpage,
+        "certs.json":   certpage,
+        "hist.json":    histdata,
+        //web pages
+        "history.html": historypage,
+        "search.html":  searchpage,
+        "login.html":   loginpage,
+        "user.html":    userpage,
+        "certs.html":   certpage,
+        "admin.html":   adminpage
     }
 }

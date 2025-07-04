@@ -1,5 +1,9 @@
 #!/usr/bin/env rampart
 
+// to run behind a proxy such as nginx, set httpOnly=true, and set httpOnlyPort
+var httpOnly=false;
+var httpOnlyPort=8070
+
 /*
 the server can be started by running:
   rampart web_server_config.js
@@ -79,7 +83,7 @@ var serverConf = {
     //errorLog:            working_directory + '/logs/error.log',
 
     /* log                 Bool.   Whether to log requests and errors   */
-    log:                   false,
+    log:                   true,
 
     /* rotateLogs          Bool.   Whether to rotate the logs   */
     //rotateLogs:          false,
@@ -259,6 +263,16 @@ function myloggingfunc_alt (logdata, logline) {
 }
 */
 
+/* Extras for shse */
+if(httpOnly) {
+   serverConf.secure=false;
+   serverConf.redir=false; 
+   serverConf.port=httpOnlyPort;
+   serverConf.httpOnly=true;
+}
+
+
+
 /* A helper to restart with a new certificate */
 if(process.argv[2] == "newcert") {
     rampart.globalize(rampart.utils);
@@ -411,6 +425,50 @@ if(process.argv[2] == "newcert") {
     }
     process.exit(0);
 }
+
+var psl={};
+var pslnots={};
+
+function readlist(list) {
+    var x=0, l, lr = rampart.utils.readLine(list);
+
+    var iswild;
+
+    while( (l=lr.next()) ){
+        iswild='n';
+        if(l=='\n'||l.substring(0,2)=='//')
+            continue;
+        l=l.trim();
+        if(l.charAt(0) == '*') {
+            iswild='y';
+            l=l.substring(2);
+        } else if (l.charAt(0)=='!') {
+            pslnots[l.substring(1)]=true;
+        }
+        psl[l]=iswild;        
+    }
+}
+
+// load public suffix list
+function loadlist() {
+    var fprintf=rampart.utils.fprintf;
+    var curl=require('rampart-curl');
+    var pslList = working_directory + '/public_suffix_list.dat';
+    var text, res = curl.fetch('https://publicsuffix.org/list/public_suffix_list.dat');
+    if(res.status!=200) {
+        //fall back to saved version, if exists
+        if(!stat(pslList)) {
+            fprintf(stderr, "Could not download https://publicsuffix.org/list/public_suffix_list.dat\n");
+            process.exit(1); 
+        }
+        fprintf(stderr, "Warning: Could not download public suffix list, using saved version\n");
+    } else {
+        fprintf(pslList,'%s',res.text);
+    }
+    readlist(pslList);
+}
+
+loadlist();
 
 /* **************************************************** *
  *  process command line options and start/stop server  *

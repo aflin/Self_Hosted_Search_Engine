@@ -17,7 +17,7 @@ header img {
   margin-right: 15px;
   float:left;
   position:relative;
-  top:12px;
+  top:20px;
 }
 
 header .title-text {
@@ -36,10 +36,11 @@ header p {
 }
 
 nav {
-  background-color: white;
+  background-color: transparent;
   padding: 10px 0px;
   display: flex;
   justify-content: space-between;
+  white-space: nowrap;
 }
 
 nav a {
@@ -80,6 +81,7 @@ main {
     border-radius:13px;
     overflow:hidden;
 }
+
 .divider {
     width: 100%;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -135,7 +137,48 @@ footer {
   position: relative;  
 }
 .info {
-  max-width: 75%;
+  max-width: 80%;
+}
+@media screen and (max-width: 820px) {
+    main {
+        margin-left:40px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    main {
+        margin-left:30px;
+    }
+}
+
+@media screen and (max-width: 735px) {
+    #datepicker {
+        position: relative;
+        left: -50px
+    }
+}
+
+@media screen and (max-width: 690px) {
+    #datepicker {
+        transform: scale(0.85);
+        transform-origin:left;
+    }
+    nav {
+        position:relative;
+        left: -135px;
+    }
+}
+
+@media screen and (max-width: 565px) {
+    #datepicker {
+        transform: scale(0.78);
+    }
+}
+
+@media screen and (max-width: 600px) {
+    main {
+        margin-left:10px;
+    }
 }
 .link {
   font-size: 16pt;
@@ -183,7 +226,7 @@ footer {
 .hov {
   border-radius: 10px;
   width: 130px;
-  height:100px;
+  height:95px;
   object-fit: cover;
   position:absolute;
 }
@@ -219,6 +262,9 @@ footer {
     padding-top: 10px;
     border: 1px solid #aaa;
     box-shadow:none;
+}
+.autocomplete-suggestions.domAuto {
+    transform: translate(-1px,-8px);
 }
 .rico {left: -40px; color:red;}
 .rmcb {left: -25px;}

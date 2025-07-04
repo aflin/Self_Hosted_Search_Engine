@@ -3,13 +3,189 @@ function dohist(dpicker,server,user,key) {
     var lastheat;
     var resbox=$('#hres');
     var byDate, bySite;
+    var dq=$('#dq');
 
     if(!server) server='';
 
+    function assembleByDom(res){
+        var r, d, lastd, ret=[], o={entries:[]}, rows;
+        if(!res || !res.rows)
+            return ret;
+        rows=res.rows;
+        for (var i=0; i < rows.length; i++) {
+            r=rows[i];
+            d= new Date(r.Date).toLocaleDateString();
+            if(lastd && d != lastd) {
+                o.day=lastd;
+                ret.push(o);
+                o={entries:[]};
+            }
+            r=rows[i];
+            lastd=d;
+            o.entries.push(r);
+        }
+        if(o.entries.length) {
+            o.day=lastd;
+            ret.push(o);
+        }
+        return ret;
+    }
+
+    function lazydoms(dom, data) {
+        console.log(data);
+        var res=data.rows;
+        var startd = $('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
+        var m = parseInt(startd.attr('data-month'));
+        var y = parseInt(startd.attr('data-year'));
+        var d = parseInt(startd.find('a').attr('data-date'));
+        var cd = new Date(`${y}-${m<9?'0':''}${(m+1)}-${d<10?'0':''}${d}T00:00:00.0`);
+
+        for(var i=0;i<res.length;i++){
+            var n=res[i];
+            if(n) {
+                var day=cd.toLocaleDateString();
+                html=`<div class="sitediv" data-day="${day}">`+
+                        '<span class="sitelink" title="show entries">'+
+                            '<span title="show entries">&rarr;</span>'+
+                            `<span class="timestamp2">${day}` + '</span>'+
+                        '</span>'+
+                        ` (${n})`;
+                html+='</div>';
+                resbox.append(html);
+            }
+            cd.setDate(cd.getDate()+1);
+        }
+        $('.sitelink').click(function(e){
+            e.stopImmediatePropagation();
+            var day=$(this).closest('.sitediv').attr('data-day');
+            updatecal(day, null, function(data){
+                console.log("done");
+                var tar=$(`.sitediv[data-site="${dom}"]`);
+                tar.find('.sitelink').click()
+                tar[0].scrollIntoView();
+            });
+        });
+    }
+
+    function showByDom(dom, res, cnt, lazy, start, end) {
+        var s, r, html;
+        resbox.empty();
+        resbox.addClass('bydom').removeClass('bydate bysite');
+        dq.css("background-color",'white');
+        gb.css("background-color",'lightgray');
+        gb.text('Show Day View');
+        gb.addClass('bydate');
+        dq.val(dom);
+//        resbox.append(`<p style="color:gray">From ${start.toLocaleDateString()} to ${end.toLocaleDateString()}</p>`);
+        if(lazy) {
+            resbox.append(`<p id="domp" data-dom="${dom}"><b>${dom} (${cnt})</b> 
+            <i><small style="color:gray">From ${start.toLocaleDateString()} to ${end.toLocaleDateString()}</small></i></p>
+            <p><i style="color:gray">Too many results for one page.<br>Click on Date below to open result page for that date with ${dom} displayed.</i></p>`);
+            return doheat(dom,lazydoms);
+        }
+        resbox.append(`<p id="domp" data-dom="${dom}"><b>${dom} (${cnt}):</b>
+        <i><small style="color:gray">From ${start.toLocaleDateString()} to ${end.toLocaleDateString()}</small></i></p>`)
+        if(!res.length) {
+            html=`<div>no results for ${dom} during time period above</div>`;
+            resbox.append(html);
+            return;
+        }
+        for(var i=0;i<res.length;i++){
+            var s=res[i];
+            html=`<div class="sitediv" data-day="${s.day}">`+
+                    '<span class="sitelink" title="show entries">'+
+                        '<span class="showrow" style="" title="show entries">‣</span>'+
+                        `<span class="timestamp2">${s.day}` + '</span>'+
+                    '</span>'+
+                    ` (${s.entries.length})`;
+            for (var j=0;j<s.entries.length;j++) {
+                var r=s.entries[j];
+                if(! (r.edate instanceof Date) )
+                    r.edate=new Date(r.etime); 
+                html+=`<div data-hash="${r.Hash}" class="resi reslm">`+
+                    `<span class="timestamp2">${new Date(r.Date).toLocaleTimeString()}</span>`+
+                    '<span class="itemwrap2">'+
+                        `<a class="url-a a100" href="${r.Url}" '" target="_blank">${r.Title}</a>`+
+                        '<br>'+
+                        `<span class="abstract url-span">${r.Url}</span>`+
+                    '</span>'+
+                '</div>'
+            }
+            html+='</div>'; 
+            resbox.append(html);
+        }
+
+        $('.sitelink').click(function(e){
+            e.stopImmediatePropagation();
+            var t=$(this).find('.showrow'), wrap=$(this).closest('.sitediv');
+            var sd=$(this);
+            if (t.hasClass('isvis')) {
+                t.css('transform','rotate(270deg) translate(4px,2px)');
+                t.removeClass('isvis');
+                t.attr('title','show entries');
+                sd.attr('title','show entries');
+                wrap.css('height','');
+            } else {
+                t.css('transform','rotate(90deg) translate(0px, -2px)');
+                t.addClass('isvis');
+                t.attr('title','hide entries');
+                sd.attr('title','hide entries');
+                wrap.css('height','auto');
+            }
+        });
+        doheat(dom);
+    }
+
+    function domSearch(dom, noresCb) {
+        if(!dom)
+            return;
+        var startd = $('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
+        var m = parseInt(startd.attr('data-month'));
+        var y = parseInt(startd.attr('data-year'));
+        var d = parseInt(startd.find('a').attr('data-date'));
+        var s = new Date(`${y}-${m<9?'0':''}${(m+1)}-${d<10?'0':''}${d}T00:00:00.0`);
+        var endd   = $('.ui-datepicker-group').last().find('td[data-handler=selectDay]').last();
+
+        gb.css('visibility','visible');
+
+        m = parseInt(endd.attr('data-month'));
+        y = parseInt(endd.attr('data-year'));
+        d = parseInt(endd.find('a').attr('data-date'));
+        var e = new Date(`${y}-${m<9?'0':''}${(m+1)}-${d<10?'0':''}${d}T23:59:59.9999`);
+        $.post({
+            url:server+'/apps/shse/hist.json',
+            data:{dom:dom, par:`${s.toString()} ${e.toString()}`,start:s.getTime(), end:e.getTime(), user:user, key:key},
+            success: function(data){
+                if(!data) {
+                    alert("empty reply from server");
+                    return;
+                }
+                // a callback for when there are no results.  Do it instead of showByDom
+                if (noresCb) {
+                    if (data.res && data.res.rowCount==0) {
+                        noresCb(dom);
+                        return;
+                    }
+                }
+                var byDom=assembleByDom(data.res);
+                showByDom(dom, byDom, data.nrows, data.displayLazy,s,e);
+            }
+        }).fail(function(xhr, txt, err) {
+            alert("failed to get data from server: "+txt);
+        });
+    }
+
     function showByDate() {
         var res = byDate.rows
+        dq.css("background-color",'lightgray');
+        gb.css("background-color",'');
+        gb.text('Group by Site');
+        gb.addClass('bydate');
+        orderByDate=true;
+
         resbox.empty();
-        resbox.append('<p><b>'+byDate.datestr+':</b></p>');
+        resbox.addClass('bydate').removeClass('bydom bysite');
+        resbox.append('<p><b>'+byDate.datestr+' (by date):</b></p>');
         for(var i=0;i<res.length;i++){
             var r=res[i];
             if(! (r.edate instanceof Date) )
@@ -43,14 +219,16 @@ function dohist(dpicker,server,user,key) {
                 proto="file:";
             } else {
                 try {
-                    site=new URL(r.Url);
+                    /*site=new URL(r.Url);
                     proto=site.protocol;
-                    site = site.host;
+                    site = site.host;*/
+                    site=r.Dom;
                 } catch(e){}
             }
             if(!site) {
-                console.log("can't parse url",r);
-                continue;
+                site="unknown";
+                //console.log("can't parse url",r);
+                //continue;
             }
             var entry = ret.entriesBySite[site];
             if(!entry) {
@@ -88,8 +266,15 @@ function dohist(dpicker,server,user,key) {
 
     function showBySite() {
         var s, r, html, res=bySite.res
+        dq.css("background-color",'lightgray');
+        gb.css("background-color",'');
+        gb.text('Order by Date');
+        gb.removeClass('bydate');
+        orderByDate=false;
+
         resbox.empty();
-        resbox.append('<p><b>'+bySite.datestr+':</b></p>');
+        resbox.addClass('bysite').removeClass('bydom bydate');
+        resbox.append('<p><b>'+bySite.datestr+' (by site):</b></p>');
         for(var i=0;i<res.length;i++){
             var s=res[i];
             var first = new Date(s.first), last=new Date(s.last);
@@ -101,7 +286,7 @@ function dohist(dpicker,server,user,key) {
                         '</span>'+
                         `<span class="timestamp2" style="margin-left:16px">${last.toLocaleTimeString()}</span>`+
                     '</span>'+
-                    `<a class="url-a2 tar" target="_blank" href="${s.proto}//${s.host=='filesystem'?'/':s.host}">${s.host}</a>`+
+                    `<a class="url-a2 tar showdom" data-site="${s.host}" target="_blank" href="${s.proto}//${s.host=='filesystem'?'/':s.host}">${s.host}</a>`+
                     ` (${s.entries.length})`;
             for (var j=0;j<s.entries.length;j++) {
                 var r=s.entries[j];
@@ -138,7 +323,16 @@ function dohist(dpicker,server,user,key) {
                 wrap.css('height','auto');
             }
         });
+        $('.showdom').click(function(e){
+            e.stopImmediatePropagation();
+            var t=$(this);
+            var dom = t.attr('data-site');
+            domSearch(dom);
+            return false;
+        });
     }
+
+
 
     var gb = $('#groupby');
     var orderByDate=false;
@@ -182,7 +376,7 @@ function dohist(dpicker,server,user,key) {
        setCookie('histinfo', {od:orderByDate, ld:lastDate});
     }
 
-    function updatecal(dateText) {
+    function updatecal(dateText, ignore, cb) {
         var dt=new Date();
         var m = String(dt.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
         var d = String(dt.getDate()).padStart(2, '0');
@@ -202,14 +396,19 @@ function dohist(dpicker,server,user,key) {
             return;
         }
         var c=dateText.match(/(\d+)\/(\d+)\/(\d+)/);
-        //send computer localtime for chosen day in ms since epoch
-        var s = new Date(`${c[3]}-${c[1]}-${c[2]}T00:00:00`);
-        var e = new Date(`${c[3]}-${c[1]}-${c[2]}T23:59:59.999`);
-        //console.log(s,e);
+        d=c[2].length==1 ? '0'+c[2] : c[2];
+        m=c[1].length==1 ? '0'+c[1] : c[1];
+        var s = new Date(`${c[3]}-${m}-${d}T00:00:00`);
+        var e = new Date(`${c[3]}-${m}-${d}T23:59:59.999`);
+ 
         $.post({
             url:server+'/apps/shse/hist.json',
             data:{date:dateText, start:s.getTime(), end:e.getTime(), user:user, key:key},
             success: function(data){
+                if(!data || !data.res || !data.start){
+                    alert("server sent empty response");
+                    return;
+                }
                 byDate=data.res;
                 var d=new Date(data.start);
                 byDate.datestr = s.toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -226,7 +425,8 @@ function dohist(dpicker,server,user,key) {
                     delete cache[en];
                     //console.log('deleted',en);
                 }
-                saveEntries()
+                saveEntries();
+                if(cb) cb(data);
             }
         }).fail(function(xhr, txt, err) {
             alert("failed to get data from server: "+txt);
@@ -246,6 +446,7 @@ function dohist(dpicker,server,user,key) {
             gb.addClass('bydate');
             orderByDate=true;
         }
+        doheat();
         setCookie('histinfo', {od:orderByDate, ld:lastDate});
     });
 
@@ -253,15 +454,17 @@ function dohist(dpicker,server,user,key) {
         var max=parseInt(data.max),i=0;
         var rows=data.rows;
         $('td[data-handler=selectDay]').each(function(){
-            var t=$(this).find('a');
-            var v = parseInt(rows[i])/max ;
-            v *= 100.0;
-            t.css('background',`rgb(101 124 194 / ${v}%)`);
+            var v=0, t=$(this).find('a');
+            if(rows[i]!==undefined) {
+                v = parseInt(rows[i])/max ;
+                v *= 100.0;
+            }
+            t.css('background',`rgb(64 128 255 / ${v}%)`);
             i++;
         });
 
     }
-    function doheat(m,y){
+    function doheat(dom, cb){
         setTimeout(function(){
             // in monthchange, jquery ui returns wrong month when showing
             // multiple months and clicking on arrows where 
@@ -272,20 +475,34 @@ function dohist(dpicker,server,user,key) {
             $.post({
                 url:server+'/apps/shse/hist.json',
                 //data:{startm:, starty:y },
-                data:{startm:firstmonth, starty:firstyear,user:user, key:key },
+                data:{dom:dom, startm:firstmonth, starty:firstyear,user:user, key:key },
                 success: function(data){
                     insertheat(data);
-                    lastheat=data;
+                    if(cb)
+                        cb(dom,data);
+                    if(!dom)
+                        lastheat=data;
                 }
             }).fail(function(xhr, txt, err) {
                 alert("failed to get data from server: "+txt);
             });
         },2);
     }
- 
+
+    var skipheat=false;
     function monthchange(year,month) {
         // year, month ignored.  See above.
-        doheat();
+        if($('.bydom').length)
+        {
+            var dom=$('#domp').attr('data-dom');
+            //cal is not updated at this point
+            setTimeout(function(){
+                domSearch(dom);
+            },20);
+        }
+        else if (!skipheat)
+            doheat();
+        skipheat=false;
     }
 
     dpicker.datepicker({
@@ -311,4 +528,74 @@ function dohist(dpicker,server,user,key) {
     }
     doheat();
     doclick=true;
+
+    if(dq.length && dq.devbridgeAutocomplete) {
+        dq.devbridgeAutocomplete({
+            serviceUrl: server+'/apps/shse/autocomp.json?dom=1',
+            dataType: 'json',
+            minChars: 3,
+            noCache: false
+        });  
+        $('.autocomplete-suggestions').eq(1).addClass('domAuto');
+    }
+
+    $('body').on('keydown','#dq',function(e,ui){
+        if(e.originalEvent.key==' ') {
+            e.stopImmediatePropagation();
+            return false;
+        }
+    });
+
+    function nores(dom) {
+        $.post({
+            url:server+'/apps/shse/hist.json',
+            data:{dom:dom, getLast:true, user:user, key:key},
+            success: function(data){
+                if(data && data.end) {
+                    var d=new Date(data.end);
+                    d.setDate(1);
+                    d.setMonth(d.getMonth()-2);
+                    dpicker.datepicker("setDate", d);
+                    domSearch(dom);
+                } else {
+                    resbox.empty();
+                    resbox.append(`<div>no results for ${dom} during time period above</div>`);
+                }
+            }
+        }).fail(function(xhr, txt, err) {
+            alert("failed to get data from server: "+txt);
+        });
+    }
+
+    dq.focus(function(){
+        if(dq[0].style.backgroundColor=='lightgray')
+            dq.addClass('inactive');
+        dq.css('background-color','');
+    });
+    
+    dq.blur(function(){
+        if(dq.hasClass('inactive'))
+            dq.removeClass('inactive').css('background-color','lightgray');
+    });
+
+    $('body').on('keyup','#dq',function(e,ui){
+        if(e.originalEvent.key=='Enter') {
+            skipheat=true;
+            domSearch(dq.val(), nores)
+        }
+        if (window.safari) { 
+            dq.blur();
+            safari.application.addEventListener("popover", function(){
+                setTimeout(function(){
+                    $('.autocomplete-suggestions').hide();
+                },250);
+             },true);
+        }
+    });
+
+    $('#dsearch').click(function(){
+        skipheat=true;
+        domSearch(dq.val(),nores)
+    });
+
 }
