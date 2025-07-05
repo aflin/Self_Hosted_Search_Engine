@@ -358,13 +358,13 @@ $(document).ready(function(){
             dis=true;
             enable.html("Off");
             if(browser.browserAction && browser.browserAction.setIcon)
-                    browser.browserAction.setIcon({path:{19:'ricon19.png',20:'ricon20.png',38:'ricon19.png'}});
+                    browser.browserAction.setIcon({path:{19:'images/ricon19.png',20:'images/ricon20.png',38:'images/ricon19.png'}});
         } else {
             enable.addClass('onsw-on');
             dis=false;
             enable.html("On");
             if(browser.browserAction && browser.browserAction.setIcon)
-                    browser.browserAction.setIcon({path:{19:'icon19.png',20:'icon20.png',38:'icon19.png'}});
+                    browser.browserAction.setIcon({path:{19:'images/icon19.png',20:'images/icon20.png',38:'images/icon19.png'}});
         }    
         browser.storage.local.set({disabled:dis});
     });
