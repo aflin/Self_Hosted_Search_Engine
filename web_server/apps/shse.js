@@ -210,7 +210,7 @@ function makeUserTables(tbname) {
     }
 
     if(!indexExists(`${tbname}_history_Dom_ftx`)) {
-        sql.exec(`create fulltext index ${tbname}_history_Dom_ftx on {tbname}_history(Dom) WITH WORDEXPRESSIONS ('[\\alnum\\x80-\\xFF\\.]{2,99}');`);
+        sql.exec(`create fulltext index ${tbname}_history_Dom_ftx on ${tbname}_history(Dom) WITH WORDEXPRESSIONS ('[\\alnum\\x80-\\xFF\\.]{2,99}');`);
         if(!indexExists(`${tbname}_history_Dom_ftx`)) {
             fprintf(stderr, `error creating ${tbname}_history_Dom_ftx: %s\n`, sql.errMsg);
             return {error: sprintf(`error creating ${tbname}_history_Dom_ftx: %s`, sql.errMsg)};
