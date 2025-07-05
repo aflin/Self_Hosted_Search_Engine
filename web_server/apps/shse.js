@@ -3,6 +3,48 @@ rampart.globalize(rampart.utils);
 
 var urlutil=require('rampart-url');
 
+// in case not using the web_server_conf.js that comes with shse, we need to load psl
+if(!global.psl || !global.pslnots) {
+    global.psl={};
+    global.pslnots={};
+
+    function readlist(list) {
+        var x=0, l, lr = rampart.utils.readLine(list);
+
+        var iswild;
+
+        while( (l=lr.next()) ){
+            iswild='n';
+            if(l=='\n'||l.substring(0,2)=='//')
+                continue;
+            l=l.trim();
+            if(l.charAt(0) == '*') {
+                iswild='y';
+                l=l.substring(2);
+            } else if (l.charAt(0)=='!') {
+                pslnots[l.substring(1)]=true;
+            }
+            psl[l]=iswild;        
+        }
+    }
+
+    var curl=require('rampart-curl');
+    var pslList = serverConf.dataRoot + '/public_suffix_list.dat';
+    if(!stat(pslList)) {
+        var res = curl.fetch('https://publicsuffix.org/list/public_suffix_list.dat');
+        if(res.status!=200) {
+            fprintf(stderr, "Warning: Could not download public suffix list, and no saved version\n");
+        } else {
+            fprintf(pslList,'%s',res.text);
+        }
+    }
+    readlist(pslList);
+}
+
+
+
+
+
 // function to extract a proper domain, removing any subdomains
 // but respecting public suffix list.  suffix list is loaded in web_server_conf.js
 // returns urlutil.components with added 'domain' property, if properly extracted.
