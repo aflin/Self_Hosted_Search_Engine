@@ -1,6 +1,12 @@
 #!/usr/bin/env rampart
 rampart.globalize(rampart.utils);
 
+//for use from command line
+if(!global.serverConf) serverConf={
+        dataRoot:realPath(process.scriptPath+'/../data'),
+        serverRoot:realPath(process.scriptPath+'/../')
+    }
+
 var urlutil=require('rampart-url');
 
 // in case not using the web_server_conf.js that comes with shse, we need to load psl
@@ -29,7 +35,7 @@ if(!global.psl || !global.pslnots) {
         }
     }
 
-    function loadlist();
+    function loadlist(){
         var curl=require('rampart-curl');
         var pslList = serverConf.dataRoot + '/public_suffix_list.dat';
         var pslBackup = serverConf.serverRoot + '/public_suffix_list.dat';
@@ -139,8 +145,6 @@ function getDomain(url){
 
 var cookie_expiration=86400;
 
-//for use from command line
-if(!global.serverConf) serverConf={dataRoot:realPath(process.scriptPath+'/../data')}
 
 var Sql = use.sql;
 var crypto = use.crypto;
