@@ -1667,7 +1667,6 @@ function checkentry(req) {
     if(!res)
         res = {saved:false};
     else {
-        printf("three\n");
         sql.one(`update ${p.user}_pages set LastV='now', Numvisits=Numvisits+1 where Hash=?`, [p.hash]);
         res.saved = true;
     }
