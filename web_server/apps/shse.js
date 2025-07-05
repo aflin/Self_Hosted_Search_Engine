@@ -208,7 +208,15 @@ function makeUserTables(tbname) {
             return {error: sprintf(`error creating ${tbname}_history_Dom_x: %s`, sql.errMsg)};
         }
     }
-//create fulltext index aaron_history_Dom_ftx on aaron_history(Dom) WITH WORDEXPRESSIONS ('[\\alnum\\x80-\\xFF\\.]{2,99}')"
+
+    if(!indexExists(`${tbname}_history_Dom_ftx`)) {
+        sql.exec(`create fulltext index ${tbname}_history_Dom_ftx on {tbname}_history(Dom) WITH WORDEXPRESSIONS ('[\\alnum\\x80-\\xFF\\.]{2,99}');`);
+        if(!indexExists(`${tbname}_history_Dom_ftx`)) {
+            fprintf(stderr, `error creating ${tbname}_history_Dom_ftx: %s\n`, sql.errMsg);
+            return {error: sprintf(`error creating ${tbname}_history_Dom_ftx: %s`, sql.errMsg)};
+        }
+    }
+
     if(!tableExists(`${tbname}_heatstats`)) {
         sql.exec(`create table ${tbname}_heatstats (Day dword, Cnt dword)`);
         if(!tableExists(`${tbname}_heatstats`)) {
@@ -225,6 +233,16 @@ function makeUserTables(tbname) {
         }
     }
 
+    // set updater to run at 2 am
+    try {
+        var n=new Date();
+        var schtime = dateFmt('%Y-%m-%d 02:00:00 %z', 86400 + n.getTime()/1000);
+        sql.scheduleUpdate(`${tbname}_history_Dom_ftx`, schtime, 'daily', 300);
+        sql.scheduleUpdate(`${tbname}_pages_Text_ftx`, schtime, 'daily', 300);
+    } catch(e) {
+        fprintf(stderr, 'error setting schedule: %s\n', e.message);
+        return {error: sprintf(stderr, 'error setting schedule: %s\n', e.message)};
+    } 
     return true;
 }
 
