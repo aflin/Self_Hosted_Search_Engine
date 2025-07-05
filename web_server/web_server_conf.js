@@ -444,6 +444,7 @@ function readlist(list) {
             l=l.substring(2);
         } else if (l.charAt(0)=='!') {
             pslnots[l.substring(1)]=true;
+            continue;
         }
         psl[l]=iswild;        
     }
@@ -451,19 +452,41 @@ function readlist(list) {
 
 // load public suffix list
 function loadlist() {
-    var fprintf=rampart.utils.fprintf;
+    var fprintf=rampart.utils.fprintf, stat=rampart.utils.stat, stderr=rampart.utils.stderr;
     var curl=require('rampart-curl');
-    var pslList = working_directory + '/public_suffix_list.dat';
-    var text, res = curl.fetch('https://publicsuffix.org/list/public_suffix_list.dat');
-    if(res.status!=200) {
-        //fall back to saved version, if exists
-        if(!stat(pslList)) {
-            fprintf(stderr, "Could not download https://publicsuffix.org/list/public_suffix_list.dat\n");
-            process.exit(1); 
-        }
-        fprintf(stderr, "Warning: Could not download public suffix list, using saved version\n");
-    } else {
-        fprintf(pslList,'%s',res.text);
+    var pslList = working_directory + '/data/public_suffix_list.dat';
+    var pslBackup = working_directory + '/public_suffix_list.dat';
+    var pstat = stat(pslList);
+    var downloadNew=false;
+    var now = new Date();
+    var maxAge=30; //days
+    var user = serverConf.user?serverConf.user:'nobody';
+
+    if(!pstat)
+        downloadNew=true;
+    else if( (now.getTime()-pstat.mtime.getTime())/86400000 > maxAge)
+        downloadNew=true; 
+
+    if(downloadNew) {
+        var res = curl.fetch('https://publicsuffix.org/list/public_suffix_list.dat');
+        if(res.status!=200) {
+            //fall back to saved version, if exists
+            if(!pstat) {
+                try {
+                    rampart.utils.copyFile(pslBackup, pslList);
+                    var iam = rampart.utils.shell('whoami').stdout.trim();
+                    if(iam=='root')
+                        rampart.utils.chown(pslList,user);
+                } catch(e) {
+                    fprintf(stderr, "Could not download https://publicsuffix.org/list/public_suffix_list.dat and no backup found\n");
+                    console.log(e);
+                    process.exit(1);
+                }
+            }
+            fprintf(stderr, "Warning: Could not download public suffix list, using older saved version\n");
+            readlist(pslList);
+        } else
+            fprintf(pslList,'%s',res.text);
     }
     readlist(pslList);
 }

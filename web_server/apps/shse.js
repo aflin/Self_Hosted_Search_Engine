@@ -23,22 +23,46 @@ if(!global.psl || !global.pslnots) {
                 l=l.substring(2);
             } else if (l.charAt(0)=='!') {
                 pslnots[l.substring(1)]=true;
+                continue;
             }
             psl[l]=iswild;        
         }
     }
 
-    var curl=require('rampart-curl');
-    var pslList = serverConf.dataRoot + '/public_suffix_list.dat';
-    if(!stat(pslList)) {
-        var res = curl.fetch('https://publicsuffix.org/list/public_suffix_list.dat');
-        if(res.status!=200) {
-            fprintf(stderr, "Warning: Could not download public suffix list, and no saved version\n");
-        } else {
-            fprintf(pslList,'%s',res.text);
+    function loadlist();
+        var curl=require('rampart-curl');
+        var pslList = serverConf.dataRoot + '/public_suffix_list.dat';
+        var pslBackup = serverConf.serverRoot + '/public_suffix_list.dat';
+        var pstat = stat(pslList);
+        var downloadNew=false;
+        var now = new Date();
+        var maxAge=30; //days
+
+        if(!pstat)
+            downloadNew=true;
+        else if( (now.getTime()-pstat.mtime.getTime())/86400000 > maxAge)
+            downloadNew=true; 
+
+        if(downloadNew) {
+            var res = curl.fetch('https://publicsuffix.org/list/public_suffix_list.dat');
+            if(res.status!=200) {
+                //fall back to saved version, if exists
+                if(!pstat) {
+                    try {
+                        rampart.utils.copyFile(pslBackup, pslList);
+                    } catch(e) {
+                        fprintf(stderr, "Could not download https://publicsuffix.org/list/public_suffix_list.dat and no backup found\n");
+                        return;
+                    }
+                }
+                fprintf(stderr, "Warning: Could not download public suffix list, using older saved version\n");
+                readlist(pslList);
+            } else
+                fprintf(pslList,'%s',res.text);
         }
+        readlist(pslList);
     }
-    readlist(pslList);
+    loadlist();
 }
 
 
@@ -1139,6 +1163,7 @@ function deluser(user) {
     sql.one("delete from sessions where Acctid=?",[user]);
     sql.one(`drop table ${user}_pages`);
     sql.one(`drop table ${user}_history`);
+    sql.one(`drop table ${user}_heatstats`);
 
     return true;
 }
