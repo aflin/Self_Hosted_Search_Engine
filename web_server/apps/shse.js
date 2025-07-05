@@ -1005,17 +1005,19 @@ function certpage(req){
         return loginredir;
     }
 
+    var head=sprintf(htmlHeadfmt, cred.name);
+
     var cdir = serverConf.serverRoot+'/certs';
     if(!stat(cdir))
-    return {html:`${head}<script src="/js/shse-admin.js"></script>
-        ${endHtmlHead}
-        ${htmlBody}
-        ${adminHtmlTop}   
-        ${htmlMain}
-        CERTS DIRECTORY IS MISSING
-        ${endHtmlMain}\n${htmlFooter}\n${endHtmlBody}
-        `
-    };
+        return {html:`${head}<script src="/js/shse-admin.js"></script>
+            ${endHtmlHead}
+            ${htmlBody}
+            ${adminHtmlTop}   
+            ${htmlMain}
+            CERTS DIRECTORY IS MISSING
+            ${endHtmlMain}\n${htmlFooter}\n${endHtmlBody}
+            `
+        };
 
     // ajax json requests
     switch (req.params.action) {
@@ -1051,7 +1053,6 @@ function certpage(req){
     o+='</table><br><button class="cbut" id="activate">Activate</button>'+
        '<button class="cbut" id="delete">Delete</button>'+
        '<button class="cbut" id="upload">Upload New</button><br>';
-    var head=sprintf(htmlHeadfmt, cred.name);
     req.put(`
 ${head}
 <script src="/js/shse-admin.js"></script>
