@@ -280,6 +280,12 @@ var htmlTop=`
       </nav>
 `;
 
+// If the certs dir is missing (i.e. this script has been integrated into another rampart-server env)
+// then don't dislay certs link.
+var hidecerts=serverConf.httpOnly;
+if(!hidecerts)
+    hidecerts = !stat(serverConf.serverRoot+'/certs');
+
 var adminHtmlTop=`
   <header>
     <img src="/images/logo.png" alt="Self Hosted Search Engine Logo">
@@ -291,7 +297,7 @@ var adminHtmlTop=`
         </div>
         <div>
           <a href="/apps/shse/admin.html">Users</a>
-          ${serverConf.httpOnly?'':'<a href="/apps/shse/certs.html">Certificates</a>'}
+          ${hidecerts?'':'<a href="/apps/shse/certs.html">Certificates</a>'}
           <a id="logout" href="login.html?logout=1">Log out</a>
         </div>
       </nav>
@@ -790,9 +796,8 @@ function gethash(salt, pass) {
     return res.key;
 }
 
-function findcerts() {
+function findcerts(cdir) {
     var certs={}, mods={}, activecert, activekey;
-    var cdir = serverConf.serverRoot+'/certs';
     readDir(cdir).forEach(function(f) {
         var ls=lstat(cdir+'/'+f);
         if(f=='shse-cert.pem')
@@ -1000,6 +1005,18 @@ function certpage(req){
         return loginredir;
     }
 
+    var cdir = serverConf.serverRoot+'/certs';
+    if(!stat(cdir))
+    return {html:`${head}<script src="/js/shse-admin.js"></script>
+        ${endHtmlHead}
+        ${htmlBody}
+        ${adminHtmlTop}   
+        ${htmlMain}
+        CERTS DIRECTORY IS MISSING
+        ${endHtmlMain}\n${htmlFooter}\n${endHtmlBody}
+        `
+    };
+
     // ajax json requests
     switch (req.params.action) {
         case 'check':
@@ -1012,7 +1029,7 @@ function certpage(req){
             return activatecert(req);
     }
 
-    var certs=findcerts();
+    var certs=findcerts(cdir);
 
     var keys = Object.keys(certs);
 
