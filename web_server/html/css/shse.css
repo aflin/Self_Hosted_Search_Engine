@@ -257,9 +257,9 @@ footer {
   flex-direction: column;
   background-color: #ffffff;
   position: absolute;
-  top: 32px;
+  top: 50px;
   right: 0px;
-  left: -10px;
+  left: 0px;
   box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
   padding: 16px;
   z-index: 100000;
@@ -347,8 +347,15 @@ footer {
     }
 
     .hamburger {
-      display: block;
+      display: inline-block;
       font-size:24px;
+      height: 40px;
+      padding: 0px 6px;
+      position: relative;
+      top: 5px;
+      vertical-align: top;
+      float: right;
+      right:5px;
     }
 
     .mobile-menu.show {
@@ -357,6 +364,7 @@ footer {
     main {
         padding-right: 5px;
         padding-left: 5px;
+        padding-top: 0;
     }
     .hov {
         display: none;
@@ -383,6 +391,7 @@ footer {
         max-width: 100%;
     }
     header img {
+        display: none;
         height: 45px;
         width: 45px;
         margin-right: 0px;
@@ -393,28 +402,31 @@ footer {
         object-fit: cover;
     }
     nav {
-        position: absolute;
-        left: 0;
-        padding: 5px;
+        display:none;
     }
     .swrap {
         border: 1px solid #aaa;
-        width: calc( 100% - 100px );
+        width: 100%;
         display: inline-block;
-        height: 40px;
+        height: 38px;
         max-width: 800px;
         position: relative;
         border-radius: 13px;
         overflow: hidden;
         top:5px;
-        left: 45px;
     }
     .entry {
         width: 100%;
     }
+    .search-box {
+        margin-bottom:20px;
+        display: inline-block;
+        width: calc(100% - 70px);
+        padding-left:15px;
+    }
     .search-box input[type="submit"] {
         background-image: url(/images/mageye.png);
-        background-size: 35px;
+        background-size: 33px;
         background-repeat: no-repeat;
         background-position: 0px 3px;
         width: 37px;

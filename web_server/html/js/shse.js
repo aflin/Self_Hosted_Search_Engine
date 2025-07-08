@@ -284,14 +284,14 @@ $(document).ready(function(){
     }
 
     $('body').on('keyup','#fq',function(e){
-        if (window.safari) { 
+        /*if (window.safari) { 
             fq.blur();
             safari.application.addEventListener("popover", function(){
                 setTimeout(function(){
                     $('.autocomplete-suggestions').hide();
                 },250);
              },true);
-        }
+        }*/
 
         $('#search').click(function(){
             if (user) dosearch();

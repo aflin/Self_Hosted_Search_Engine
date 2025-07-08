@@ -370,7 +370,6 @@ var adminHtmlTop=`
           ${hidecerts?'':'<a href="/apps/shse/certs.html">Certificates</a>'}
           <a id="logout" href="login.html?logout=1">Log out</a>
         </div>
-        <button class="hamburger" id="hamburger">&#9776;</button>
       </nav>
 `;
 
@@ -396,6 +395,7 @@ var endHtmlSearch=`placeholder="Search" required>
         </div>
       </form>
     </div>
+    <button class="hamburger" id="hamburger">&#9776;</button>
 `;
 
 var htmlTopend=`
@@ -584,7 +584,7 @@ ${htmlMain}
       </span>
     </div>
     <div class="description">
-        <img src=${r.image} class="hov hov-inline">
+        ${r.image ? '<img src="' + r.image + '" class="hov hov-inline">':''}
         ${r.abstract}
     </div>
   </div>
