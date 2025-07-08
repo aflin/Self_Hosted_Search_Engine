@@ -111,17 +111,25 @@ function attachhov(){
     $('.hov').hover(function(){
         var t=$(this),h,top,bh=window.innerHeight+window.scrollY,bottom=25;
         var im= new Image();
+        var isinline = t.hasClass('hov-inline');
+        var clearance=250;
+        if(isinline) {
+            bottom=140;
+            clearance=180;
+        }
+        t.closest('section').css('z-index','100');
         $('.ishov2').remove();
         im.onload = function() {
             h=t.parent().find('.hov');
             top=h.offset().top - $(window).scrollTop();
-            if (top<280) bottom=top-255;
+            if (top<280) bottom=top-clearance;
             t.after('<img class="ishov2" style="bottom:'+bottom+'px;" src="'+t.attr('src')+'">');
         }
         $(im).addClass('hov');
         im.src=t.attr('src');
     },function(){
         $('.ishov2').remove();
+        $(this).closest('section').css('z-index','');
     });
 }
 
@@ -147,13 +155,15 @@ function mktitles(){
             t.css('transform','rotate(270deg) translate(4px,0px)');
             t.removeClass('isvis');
             t.attr('title','click to show database editing options');
-            $('#delsel').hide();
+            $('#delsel').css('visibility','hidden');
+            $('main').css('margin-left','');
         } else {
             $('.hm').show(250);
             t.css('transform','rotate(90deg)');
             t.addClass('isvis');
             t.attr('title','click to hide database editing options');
-            $('#delsel').show();
+            $('#delsel').css('visibility','visible');
+            $('main').css('margin-left','40px');
         }
     });
 
@@ -265,7 +275,12 @@ $(document).ready(function(){
             dataType: 'json',
             minChars: 3,
             noCache: false
-        });  
+        });
+        $('.autocomplete-suggestions').eq(0).addClass('mainAuto');
+        $('.mainAuto').click(function(){
+            console.log('click');
+            fq.closest('form').submit();
+        });
     }
 
     $('body').on('keyup','#fq',function(e){
@@ -284,6 +299,12 @@ $(document).ready(function(){
         });
 
     });
+
+    var ham=$('#hamburger');
+    ham.click(function(e) {
+        $('.mobile-menu').toggleClass('show');
+    });
+
 
     // SEARCH PAGE
     if ($('#showico').length) {

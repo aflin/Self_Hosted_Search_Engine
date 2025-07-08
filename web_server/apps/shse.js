@@ -339,12 +339,12 @@ var htmlTop=`
   <header>
     <img src="/images/logo.png" alt="Self Hosted Search Engine Logo">
       <nav>
-        <div>
+        <div class="nav-left">
           <a href="/apps/shse/user.html">Home</a>
           <a href="/apps/shse/history.html">History</a>
           <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
         </div>
-        <div>
+        <div class="nav-right">
           <a id="logout" href="login.html?logout=1">Log out</a>
         </div>
       </nav>
@@ -360,18 +360,30 @@ var adminHtmlTop=`
   <header>
     <img src="/images/logo.png" alt="Self Hosted Search Engine Logo">
       <nav>
-        <div>
+        <div class="nav-left">
           <a href="/apps/shse/user.html">Home</a>
           <a href="/apps/shse/history.html">History</a>
           <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
         </div>
-        <div>
+        <div class="nav-right">
           <a href="/apps/shse/admin.html">Users</a>
           ${hidecerts?'':'<a href="/apps/shse/certs.html">Certificates</a>'}
           <a id="logout" href="login.html?logout=1">Log out</a>
         </div>
+        <button class="hamburger" id="hamburger">&#9776;</button>
       </nav>
 `;
+
+var hamHtml = `
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/apps/shse/user.html">Home</a>
+  <a href="/apps/shse/history.html">History</a>
+  <a href="https://github.com/aflin/Self_Hosted_Search_Engine">GitHub</a>
+  <a href="/apps/shse/admin.html">Users</a>
+  <a id="logout" href="login.html?logout=1">Log out aaron</a>
+</div>
+`;
+
 var htmlSearch=`
     <script src="/js/jquery.autocomplete.min.js"></script>
     <div class="search-box">
@@ -506,6 +518,7 @@ ${head}
 ${endHtmlHead}
 ${htmlBody}
 ${top}
+${hamHtml}
 ${htmlSearch}value="${q}" ${endHtmlSearch}
 ${htmlTopend}
 ${htmlMain}
@@ -524,12 +537,12 @@ ${htmlMain}
             <input style="vertical-align:middle" type="checkbox" id="sall" class="hide ib" title="Select All">Select All
         </label>
         <span id="showopt" style="position:relative;">
-            <span style="cursor: pointer;position: bsolute;left:-30px;top:-11px;">Options</span>
-            <span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg) translate(4px,0px);font-size:28px;position:absolute;left:-30px;top:-10px;width:13px;" title="click to hide database editing options">‣</span>
+            <span id="showlabel">Options</span>
+            <span id="showico" title="click to hide database editing options">‣</span>
         </span>
         <span style="display:inline-block;height:22px;padding: 2px 0px 0px 5px;">&nbsp;
             <span id="delsel" class="hide">
-                <button style="padding: 2px 5px 0px 5px;border:1px solid #b00; border-radius:7px; position:relative;top:0px;left:6px;" id="rmselected">Remove Select Items</button>
+                <button style="padding: 2px 5px 0px 5px;border:1px solid #b00; border-radius:7px; position:relative;top:0px;left:45px;" id="rmselected">Remove Select Items</button>
             </span>
         </span>
         <span style="${res.rowCount?'float:right':'width:100%;text-align:center;display: inline-block;font-size: 16px;'}">${cntinfo}</span>
@@ -570,7 +583,10 @@ ${htmlMain}
       <span class="url-text">&gt; ${r.url}<br>
       </span>
     </div>
-    <div class="description">${r.abstract}</div>
+    <div class="description">
+        <img src=${r.image} class="hov hov-inline">
+        ${r.abstract}
+    </div>
   </div>
   <div class="thumb">
       <span class="tstamp">(${dateFmt('%m/%d/%Y %H:%M',d)})</span><br>`
@@ -642,6 +658,7 @@ ${endHtmlHead}
 ${htmlBody}
 
 ${top}
+${hamHtml}
 ${htmlSearch}${endHtmlSearch}
 ${htmlTopend}
 ${htmlMain}
@@ -838,6 +855,7 @@ ${endHtmlHead}
 ${htmlBody}
 
 ${top}
+${hamHtml}
 ${htmlSearch}${endHtmlSearch}
 ${htmlTopend}
 ${htmlMain}

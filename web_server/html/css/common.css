@@ -199,7 +199,7 @@
     padding: 4px;
 }
 .hide {
-    display:none;
+    visibility:hidden;
 }
 .autocomplete-suggestions {
     font-size:18px;
