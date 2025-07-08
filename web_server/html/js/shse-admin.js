@@ -366,7 +366,7 @@ function do_main() {
         }
 
         if(selected.find('.utype-Owner').length) {
-            dialogmsg("Cannot delete the Admin account.");
+            dialogmsg("Cannot delete the Owner's account.");
             return;
         }
 
