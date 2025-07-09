@@ -14,10 +14,9 @@ header {
 header img {
   height: 90px;
   width:  135px;
-  margin-right: 15px;
   float:left;
-  position:relative;
-  top:20px;
+  position: absolute;
+  top:25px;
 }
 
 header .title-text {
@@ -37,10 +36,14 @@ header p {
 
 nav {
   background-color: transparent;
-  padding: 10px 0px;
+  padding: 10px 5px;
   display: flex;
   justify-content: space-between;
   white-space: nowrap;
+  height:20px;
+  position:absolute;
+  width: 100%;
+  top:0px;
 }
 
 nav a {
@@ -89,168 +92,8 @@ main {
   background-color: #fff;
 }
 
-.swrap {
-    border: 1px solid #aaa;
-    width: calc( 100% - 172px);
-    display: inline-block;
-    height:40px;
-    max-width: 800px;
-    position:relative;
-    border-radius:13px;
-    overflow:hidden;
-}
-
-.divider {
-    width: 100%;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    height: 1px;
-    background-color: #eee;
-}
-
-.search-box {
-  margin-bottom: 40px;
-}
-
-.search-box input[type="text"] {
-  width: calc( 100% - 100px);
-  padding: 10px;
-  font-size: 1em;
-  height: 20px;
-  border: none;
-  outline: none;
-}
-
-.search-box input[type="submit"] {
-  padding: 10px 15px;
-  font-size: 1em;
-  position:absolute;
-  right:0px;  
-  border: none;
-  height:40px;
-  background-color: #f8f8f8;
-  z-index: 99999;
-}
-
-footer {
-  text-align: center;
-  padding: 20px;
-  background-color: #f4f4f4;
-  color: #888;
-  font-size: 0.9em;
-}
-
-.userkey {font-size: 10px;}
-.userpass {width:12ch;}
-.useremail {width:12ch;}
-.usernamecl {width: 12ch;}
-.chkbx {width:3ch;}
-
-
-.entry {
-  margin-top: 10px;
-  margin-bottom: 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  position: relative;  
-}
-.info {
-  max-width: 80%;
-}
-
-
-.link {
-  font-size: 16pt;
-  font-family: "Arial", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-  white-space:nowrap;
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.link a {
-  text-decoration: none;
-}
-.link a:hover {
-  text-decoration: underline;
-}
-
-.subtext img {
-  width: 15px;
-  height: 15px;
-  vertical-align: top;
-  margin-right: 5px;
-}
-
-.subtext span {
-  font-family: "Arial", sans-serif;
-  font-weight: 400;
-  font-size: 9pt;
-  color: #ababab;
-}
-.description {
-  font-family: "Arial", sans-serif;
-  font-weight: 400;
-  font-size: 10pt;
-  color: #595959;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.thumb {
-    position:relative;
-    margin-top: 5px;
-    z-index: 100;
-}
-.hov {
-  border-radius: 10px;
-  width: 130px;
-  height:95px;
-  object-fit: cover;
-  position:absolute;
-}
-
-.ishov2 {
-  border-radius: 10px;
-  max-width: 350px;
-  max-height: 250px;
-  position: absolute;
-  bottom: 250px;
-  right: 150px;
-}
-.url-text{
-  width: calc( 100% - 30px );
-  display: inline-block;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  padding-top: 2px;
-}
-
-.tstamp{
-    display: inline-block;
-    white-space: nowrap;
-    margin-bottom:4px;
-    color: #76769f;
-    width: 100%;
-    text-align: right;
-}
-.autocomplete-suggestions {
-    border-top: none !important;
-    transform: translate(-1px,-10px);
-    padding-top: 10px;
-    border: 1px solid #aaa;
-    box-shadow:none;
-}
-.autocomplete-suggestions.domAuto {
-    transform: translate(-1px,-8px);
-}
 .rico {left: -40px; color:red;}
 .rmcb {left: -25px;}
-
-.hov-inline {
-  display:none;
-}
 
 .mobile-menu {
   display: none;
@@ -294,58 +137,15 @@ footer {
         margin-left:30px;
         padding:15px;
     }
-    .hov {
-        width:110px;
-        height:80px;
-    }
 }
-
-@media screen and (max-width: 735px) {
-    #datepicker {
-        position: relative;
-        left: -50px
-    }
-}
-
-@media screen and (max-width: 690px) {
-    #datepicker {
-        transform: scale(0.85);
-        transform-origin:left;
-    }
-    nav {
-        position:relative;
-        left: -135px;
-    }
-}
-
 
 @media screen and (max-width: 600px) {
     main {
         margin-left:10px;
     }
-    #showrm {
-      padding-left:15px;
-    }
-
 }
-
-
-@media screen and (max-width: 565px) {
-    #datepicker {
-        transform: scale(0.78);
-    }
-}
-
 
 @media screen and (max-width: 480px) {
-    #datepicker {
-        transform: scale(0.75);
-    }
-    .nav-left,
-    .nav-right {
-      display: none;
-    }
-
     .hamburger {
       display: inline-block;
       font-size:24px;
@@ -366,30 +166,6 @@ footer {
         padding-left: 5px;
         padding-top: 0;
     }
-    .hov {
-        display: none;
-    }
-    .hov-inline {
-        display: block;
-        position: relative;
-        border-radius: 10px;
-        width: 76px;
-        height: 46px;
-        object-fit: cover;
-        float: left;
-        margin-right: 10px;
-    }
-    .ishov2 {
-        left:0;
-        max-width: 80%;
-    }
-
-    .thumb {
-        display:none;
-    }
-    .info {
-        max-width: 100%;
-    }
     header img {
         display: none;
         height: 45px;
@@ -403,36 +179,5 @@ footer {
     }
     nav {
         display:none;
-    }
-    .swrap {
-        border: 1px solid #aaa;
-        width: 100%;
-        display: inline-block;
-        height: 38px;
-        max-width: 800px;
-        position: relative;
-        border-radius: 13px;
-        overflow: hidden;
-        top:5px;
-    }
-    .entry {
-        width: 100%;
-    }
-    .search-box {
-        margin-bottom:20px;
-        display: inline-block;
-        width: calc(100% - 70px);
-        padding-left:15px;
-    }
-    .search-box input[type="submit"] {
-        background-image: url(/images/mageye.png);
-        background-size: 33px;
-        background-repeat: no-repeat;
-        background-position: 0px 3px;
-        width: 37px;
-        color:transparent;
-    }     
-    .search-box input[type="text"] {
-        width: calc( 100% - 55px);
     }
 }

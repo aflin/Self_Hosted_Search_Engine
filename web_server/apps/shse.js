@@ -861,10 +861,14 @@ ${htmlTopend}
 ${htmlMain}
 
 <div id="datepicker"></div>
-<div>
-    <button class="groupby" style="visibility: hidden;" id="groupby">Order by Date</button>
+<div class="sopts">
+    <!--button class="groupby" style="visibility: hidden;" id="groupby">Order by Date</button-->
+    <span class="grpby">
+        <span class="by" id="bysitel" for="bysite">By Site</span>
+        <span class="by" id="bydatel" for="bydate">By Date</span>
+    </span>
     <span class="swrap2">
-      <input type="text" spellcheck="false" autocomplete="off" id="dq" name="dq" placeholder="Domain Search">
+      <input type="text" spellcheck="false" autocomplete="off" id="dq" name="dq" placeholder="By Domain (Search)">
       <input id="dsearch" type="submit" value="Search">
     </span>
 </div>
@@ -1101,6 +1105,8 @@ function certpage(req){
             ${endHtmlHead}
             ${htmlBody}
             ${adminHtmlTop}   
+            ${htmlSearch}${endHtmlSearch}
+            ${htmlTopend}
             ${htmlMain}
             CERTS DIRECTORY IS MISSING
             ${endHtmlMain}\n${htmlFooter}\n${endHtmlBody}
@@ -1147,6 +1153,8 @@ ${head}
 ${endHtmlHead}
 ${htmlBody}
 ${adminHtmlTop}
+${htmlSearch}${endHtmlSearch}
+${htmlTopend}
 ${htmlMain}
 
     <h2>Manage Certificates</h2>
@@ -1310,6 +1318,8 @@ ${head}
 ${endHtmlHead}
 ${htmlBody}
 ${adminHtmlTop}
+${htmlSearch}${endHtmlSearch}
+${htmlTopend}
 ${htmlMain}
 
     <h2>User Accounts</h2>
