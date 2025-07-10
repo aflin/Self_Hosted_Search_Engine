@@ -4,6 +4,9 @@ var hardcode={
 };
 var settings={}
 var server, sstore, sdelete, scheck;
+//get subtitles url from background.js
+var ytsubs;
+var ytv;
 
 if(window.safari) {
     window.browser={storage:{local:{}}}
@@ -79,6 +82,21 @@ function start(f){
                 sstore = `${server}/store.json`;
                 sdelete= `${server}/delete.json`;
                 scheck = `${server}/check.json`;
+                if(settings.ytube && window.location.hostname=='www.youtube.com') {
+                    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+                        //console.log("UNFILTERED MESSAGE:", message);
+                        if( window.location.pathname=='/watch') {
+                            let params = new URLSearchParams(window.location.search);
+                            ytv = params.get('v');
+                            if (ytv && message.type === "yt-subs" && message.v==ytv ) {
+                                //console.log("Intercepted AJAX URL:", message);
+                                ytsubs=message.req?.url;
+                                //console.log("YTSUBS URL:",ytsubs);
+                            }
+                        }
+                    });
+                }
+
                 f();// web scraping function entry point
             } //else silent exit ??
         }
@@ -405,9 +423,6 @@ function update_status (obj) {
     );
 }
 
-//get subtitles url from background.js
-var ytsubs;
-var ytv;
 
 function get_youtube_captions(cb) {
     if(ytsubs) {
@@ -441,20 +456,6 @@ function get_youtube_captions(cb) {
     cb(false, new Error("No captions loaded")); // ytsubs undefined
 }
 
-if(window.location.hostname=='www.youtube.com') {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        //console.log("UNFILTERED MESSAGE:", message);
-        if( window.location.pathname=='/watch') {
-            let params = new URLSearchParams(window.location.search);
-            ytv = params.get('v');
-            if (ytv && message.type === "yt-subs" && message.v==ytv ) {
-                //console.log("Intercepted AJAX URL:", message);
-                ytsubs=message.req?.url;
-                //console.log("YTSUBS URL:",ytsubs);
-            }
-        }
-    });
-}
 
 
 function savecb(sobj,callback){
@@ -530,14 +531,26 @@ function savepage (callback){
                 let id=url.match(/\?.*v=([^&]+)/);
                 if (id.length>1) sobj.img='https://i.ytimg.com/vi/' + id[1] + '/hqdefault.jpg';
             //}
+console.log("ytube", settings.ytube)
+            if(settings.ytube) {
+                // toggle the subtitles button if not on.  Triggers loading of subtitles.
+                var stb=$('.ytp-subtitles-button');
+                if(stb.attr('aria-pressed')=='false') {
+                    stb.click();
+                    stb.click();
+                    // wait 2 secs for message from background.js, then try to get subtitles.
+                    setTimeout(() => {
+                        get_youtube_captions(function(ctxt,err){
+                            if(ctxt)
+                                sobj.text = sobj.text + ' ' + ctxt;
 
-            // toggle the subtitles button if not on.  Triggers loading of subtitles.
-            var stb=$('.ytp-subtitles-button');
-            if(stb.attr('aria-pressed')=='false') {
-                stb.click();
-                stb.click();
-                // wait 2 secs for message from background.js, then try to get subtitles.
-                setTimeout(() => {
+                            if(err)
+                                console.log("Failed to get youtube captions", err);
+
+                            savecb(sobj);
+                        });
+                    }, 2000);
+                } else {
                     get_youtube_captions(function(ctxt,err){
                         if(ctxt)
                             sobj.text = sobj.text + ' ' + ctxt;
@@ -545,21 +558,11 @@ function savepage (callback){
                         if(err)
                             console.log("Failed to get youtube captions", err);
 
-                        savecb(sobj);
+                        savecb(sobj,callback);
                     });
-                }, 2000);
-            } else {
-                get_youtube_captions(function(ctxt,err){
-                    if(ctxt)
-                        sobj.text = sobj.text + ' ' + ctxt;
-
-                    if(err)
-                        console.log("Failed to get youtube captions", err);
-
-                    savecb(sobj,callback);
-                });
+                }
+                return;
             }
-            return;
     } 
 
 
@@ -891,7 +894,7 @@ function get_page_info(){
 
     var grabpage=true; //set false if we are getting individual posts from facebook or wherever
 
-    if ( /^https:\/\/www.facebook.com\//i.test(url)) {
+    if ( settings.smedia && /^https:\/\/www.facebook.com\//i.test(url)) {
         var posts={},iiv;
         setInterval(getfb,5000);
         grabpage=false;
@@ -899,7 +902,7 @@ function get_page_info(){
         console.log("Got twitter");
         grabpage=false;
         setTimeout(gettw,5000);*/
-    } else if (/^https:\/\/bsky.app\/$/i.test(url)) {
+    } else if (settings.smedia && /^https:\/\/bsky.app\/$/i.test(url)) {
         grabpage=false;
         setInterval(getbs,5000);
     }
@@ -984,6 +987,4 @@ $(document).ready(function() {
            setTimeout(get_page_info,2000);
       }
     }, 4000);
-
-
 });

@@ -2,7 +2,6 @@ chrome.webRequest.onBeforeRequest.addListener(
     function(o) {
         let message = null;
         const pu=new URL(o.url);
-
         //youtube subtitles
         if(pu.hostname=='www.youtube.com' && pu.pathname=="/api/timedtext") {
                 const pa=new URLSearchParams(pu.search);

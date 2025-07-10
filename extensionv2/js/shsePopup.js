@@ -518,6 +518,24 @@ $(document).ready(function(){
                         </td>
                     </tr>
                     <tr>
+                        <td><b>Extras:</b></td>
+                        <td>
+                            <table style="border: 1px dotted gray; width:100%" id="exc">
+                                <tr><td colspan=2>
+                                    <i>These features are experimental and may break<br>when the following sites change their functionality.<i>
+                                </td></tr>
+                                <tr>
+                                    <td><label for="smedia">Index individual facebook and bsky posts</label></td>
+                                    <td><input style="float:right" id="smedia" type="checkbox"${gset.smedia?' checked':''}></td>
+                                </tr>
+                                <tr>
+                                    <td><label for="ytube">Index youtube captions/subtext</label></td>
+                                    <td><input style="float:right" id="ytube" type="checkbox"${gset.ytube?' checked':''}></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
                         <td><button id="save">Save</button></td>
                         <td><button style="float:right" id="cancel">Cancel</button></td>
                     </tr>
@@ -534,7 +552,13 @@ $(document).ready(function(){
             if (settings.user) em.val(settings.user);
             //if (settings.label) lb.val(settings.label);
             if (settings.server) serv.val(settings.server);
-            if (settings.key) key.val(settings.key);
+
+            if (settings.key) key.val(settings.key)
+            else {
+                keyrow.hide();
+                passrow.show();
+            }
+
             if (!settings.exclude) {
                 settings.exclude= {
                     '--usbanks': 2,
@@ -563,6 +587,7 @@ $(document).ready(function(){
                 }
                     
             });
+
 
             $("#usepass").click(function(e){
                 keyrow.hide();
@@ -614,6 +639,8 @@ $(document).ready(function(){
                 //if( EMAIL_REGEX.test(u) ) {
                     //verify user here!!!
                     settings.user=u;
+                    settings.smedia=$('#smedia').is(':checked');
+                    settings.ytube=$('#ytube').is(':checked');
                     //settings.label=label;
                     settings.server=server;
                     settings.key=key.val();
