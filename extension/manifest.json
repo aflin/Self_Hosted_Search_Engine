@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Self Hosted Search Engine",
   "description": "Automatically or manually save contents of visited pages to a self hosted full text search engine.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": "Aaron Flin",
   "permissions": [
      "tabs",
