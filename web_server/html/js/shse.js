@@ -69,7 +69,6 @@ function loadImage(img) {
             img.attr('src',url).addClass('imset');
         }
         t.onerror=function(){
-
             img.css('display','none').addClass('imset');
         }
     } else {
@@ -78,7 +77,7 @@ function loadImage(img) {
     t.src=url;
     setTimeout(function(img,t){
         if(!img.hasClass('imset')) {
-            img.attr('src',"/images/home.ico");
+            img.css('display','none').addClass('imset');
             t.src="";
         }
     },6000,img,t);

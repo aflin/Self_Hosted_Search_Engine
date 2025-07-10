@@ -4,7 +4,9 @@ function dohist(dpicker,server,user,key) {
     var resbox=$('#hres');
     var byDate, bySite;
     var dq=$('#dq');
-
+    var byd=$("#bydatel");
+    var bys=$("#bysitel");
+    var gb=$('.grpby');
     if(!server) server='';
 
     function assembleByDom(res){
@@ -71,10 +73,9 @@ function dohist(dpicker,server,user,key) {
         var s, r, html;
         resbox.empty();
         resbox.addClass('bydom').removeClass('bydate bysite');
-        dq.css("background-color",'white');
-        gb.css("background-color",'lightgray');
-        gb.text('Show Day View');
-        gb.addClass('bydate');
+        dq.css("background-color",'white').removeClass('inactive');
+        if(window.innerWidth < 480) dq.blur();// close keyboard on phone
+        bys.add(byd).removeClass('bysel');
         dq.val(dom);
 //        resbox.append(`<p style="color:gray">From ${start.toLocaleDateString()} to ${end.toLocaleDateString()}</p>`);
         if(lazy) {
@@ -100,8 +101,11 @@ function dohist(dpicker,server,user,key) {
                     ` (${s.entries.length})`;
             for (var j=0;j<s.entries.length;j++) {
                 var r=s.entries[j];
+                //fixme:
+                if(r.Title=="null") delete r.Title;
                 if(! (r.edate instanceof Date) )
                     r.edate=new Date(r.etime); 
+                r.Title =r.Title ? r.Title.replace(/\s+/,' ') : r.Url;
                 html+=`<div data-hash="${r.Hash}" class="resi reslm">`+
                     `<span class="timestamp2">${new Date(r.Date).toLocaleTimeString()}</span>`+
                     '<span class="itemwrap2">'+
@@ -177,17 +181,22 @@ function dohist(dpicker,server,user,key) {
 
     function showByDate() {
         var res = byDate.rows
-        dq.css("background-color",'lightgray');
-        gb.css("background-color",'');
-        gb.text('Group by Site');
-        gb.addClass('bydate');
+        dq.css("background-color",'lightgray').addClass('inactive');
         orderByDate=true;
+
+        bys.removeClass('bysel');
+        byd.addClass('bysel');
+        orderByDate=true;
+        setCookie('histinfo', {od:orderByDate, ld:lastDate});
 
         resbox.empty();
         resbox.addClass('bydate').removeClass('bydom bysite');
         resbox.append('<p><b>'+byDate.datestr+' (by date):</b></p>');
         for(var i=0;i<res.length;i++){
             var r=res[i];
+            //fixme:
+            if(r.Title=="null") delete r.Title;
+            r.Title =r.Title ? r.Title.replace(/\s+/,' ') : r.Url;
             if(! (r.edate instanceof Date) )
                 r.edate=new Date(r.etime); 
             resbox.append(
@@ -210,6 +219,8 @@ function dohist(dpicker,server,user,key) {
         for(var i=0;i<res.length;i++){
             r=res[i];
             site=null;
+            //fixme:
+            if(r.Title=="null") delete r.Title;
             r.Title =r.Title ? r.Title.replace(/\s+/,' ') : r.Url;
             r.edate=new Date(r.Date);
             r.etime=r.edate.getTime();
@@ -266,11 +277,13 @@ function dohist(dpicker,server,user,key) {
 
     function showBySite() {
         var s, r, html, res=bySite.res
-        dq.css("background-color",'lightgray');
-        gb.css("background-color",'');
-        gb.text('Order by Date');
-        gb.removeClass('bydate');
+        dq.css("background-color",'lightgray').addClass('inactive');
         orderByDate=false;
+
+        byd.removeClass('bysel');
+        bys.addClass('bysel');
+        orderByDate=false;
+        setCookie('histinfo', {od:orderByDate, ld:lastDate});
 
         resbox.empty();
         resbox.addClass('bysite').removeClass('bydom bydate');
@@ -286,7 +299,7 @@ function dohist(dpicker,server,user,key) {
                         '</span>'+
                         `<span class="timestamp2" style="margin-left:16px">${last.toLocaleTimeString()}</span>`+
                     '</span>'+
-                    `<a class="url-a2 tar showdom" data-site="${s.host}" target="_blank" href="${s.proto}//${s.host=='filesystem'?'/':s.host}">${s.host}</a>`+
+                    `<a class="url-a2 tar showdom" data-site="${s.host}" href="#">${s.host}</a>`+
                     ` (${s.entries.length})`;
             for (var j=0;j<s.entries.length;j++) {
                 var r=s.entries[j];
@@ -334,7 +347,6 @@ function dohist(dpicker,server,user,key) {
 
 
 
-    var gb = $('#groupby');
     var orderByDate=false;
     var lastDate;
 
@@ -348,7 +360,6 @@ function dohist(dpicker,server,user,key) {
             gset.histdata={cache:{},cacheEntries:[]}
         cache=gset.histdata.cache;
         cacheEntries=gset.histdata.cacheEntries;
-        console.log(cache);
     }
 
     function saveEntries() {
@@ -366,24 +377,24 @@ function dohist(dpicker,server,user,key) {
 
 
     function applycal() {
+        gb.css('visibility','visible');
         if(orderByDate) {
-            gb.addClass('bydate');
-            gb.text('Group by Site');
             showByDate();
         } else {
             showBySite();
         }
-       setCookie('histinfo', {od:orderByDate, ld:lastDate});
+        console.log(orderByDate);
+        setCookie('histinfo', {od:orderByDate, ld:lastDate});
     }
 
     function updatecal(dateText, ignore, cb) {
+        if(!doclick) return;
         var dt=new Date();
         var m = String(dt.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
         var d = String(dt.getDate()).padStart(2, '0');
         var y = dt.getFullYear();
         var today=`${m}/${d}/${y}`;
 
-        if(!doclick) return;
         if(today!=dateText && cache[dateText]) {
             byDate = cache[dateText].byDate;
             bySite = cache[dateText].bySite;
@@ -415,7 +426,6 @@ function dohist(dpicker,server,user,key) {
                 bySite=assembleBySite();//alters res entries
                 lastDate=dateText;
                 applycal();
-                gb.css('visibility','visible');
                 //add to cache
                 cacheEntries.push(dateText);
                 cache[dateText]={byDate:byDate,bySite:bySite}
@@ -433,22 +443,6 @@ function dohist(dpicker,server,user,key) {
         });
         if(lastheat) setTimeout(function(){insertheat(lastheat);},50);            
     };
-
-    gb.click(function(e){
-        if(gb.hasClass('bydate')){
-            gb.text('Order by Date');
-            showBySite();
-            gb.removeClass('bydate');
-            orderByDate=false;
-        } else {
-            gb.text('Group by Site');
-            showByDate();
-            gb.addClass('bydate');
-            orderByDate=true;
-        }
-        doheat();
-        setCookie('histinfo', {od:orderByDate, ld:lastDate});
-    });
 
     function insertheat(data) {
         var max=parseInt(data.max),i=0;
@@ -505,6 +499,9 @@ function dohist(dpicker,server,user,key) {
         skipheat=false;
     }
 
+    if(window.innerWidth<480)
+        nMonths=2;
+
     dpicker.datepicker({
         numberOfMonths: nMonths,
         changeMonth: true,
@@ -537,6 +534,9 @@ function dohist(dpicker,server,user,key) {
             noCache: false
         });  
         $('.autocomplete-suggestions').eq(1).addClass('domAuto');
+        $('.domAuto').click(function(){
+            domSearch(dq.val(), nores);
+        });
     }
 
     $('body').on('keydown','#dq',function(e,ui){
@@ -568,8 +568,6 @@ function dohist(dpicker,server,user,key) {
     }
 
     dq.focus(function(){
-        if(dq[0].style.backgroundColor=='lightgray')
-            dq.addClass('inactive');
         dq.css('background-color','');
     });
     
@@ -581,15 +579,7 @@ function dohist(dpicker,server,user,key) {
     $('body').on('keyup','#dq',function(e,ui){
         if(e.originalEvent.key=='Enter') {
             skipheat=true;
-            domSearch(dq.val(), nores)
-        }
-        if (window.safari) { 
-            dq.blur();
-            safari.application.addEventListener("popover", function(){
-                setTimeout(function(){
-                    $('.autocomplete-suggestions').hide();
-                },250);
-             },true);
+            domSearch(dq.val(), nores);
         }
     });
 
@@ -597,5 +587,39 @@ function dohist(dpicker,server,user,key) {
         skipheat=true;
         domSearch(dq.val(),nores)
     });
+
+    if(orderByDate)
+        byd.addClass('bysel');
+    else
+        bys.addClass('bysel');
+    bys.click(function(){
+        if(!bys.hasClass('bysel'))
+            showBySite();
+        byd.removeClass('bysel');
+        bys.addClass('bysel');
+        orderByDate=false;
+        setCookie('histinfo', {od:orderByDate, ld:lastDate});
+    });
+    byd.click(function(){
+        if(!byd.hasClass('bysel'))
+            showByDate();
+    });
+
+    $('.by').mousedown(function(){
+        $(this).addClass('bydown');
+    });
+    $('.by').mouseup(function(){
+        $(this).removeClass('bydown');
+    });
+
+    window.addEventListener('resize', function() {
+        if(nMonths==2 && window.innerWidth > 480) {
+            dpicker.datepicker( "option", "numberOfMonths", 3);
+            nMonths=3;
+        } else if (nMonths==3 && window.innerWidth<= 480) {
+            dpicker.datepicker( "option", "numberOfMonths", 2);
+            nMonths=2;
+        }
+  });
 
 }

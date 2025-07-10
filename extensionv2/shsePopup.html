@@ -19,20 +19,26 @@
     .sitelink {min-height: 30px;}
     .sitediv {height: 28px;}
     .reslm {margin-bottom:0px;}
+    .entry { padding-left: 10px; }
+    .search-box { margin:0;left:0;display:inline-block;width: calc(100% - 140px);}
+    .swrap { white-space:nowrap; width:100%; }
+    .search-box input[type="text"] { font-size: 1.5em }
   </style>
 </head>
 <body style="background-color:white;min-height:300px;overflow-x:hidden;padding-right:20px;padding-left:30px;box-sizing: border-box;">
 <div style="width:100%;">
 <span style="white-space:nowrap">
- <table style="width:100%"><tr><td style="position:relative">
-    <input autocomplete="off" type="text" id="fq" name="q" placeholder="Search" style="box-sizing:border-box;min-width:150px;width:100%;height:30px;font:normal 18px arial,sans-serif;padding: 1px 3px;border: 2px solid #ccc;">
-    <img id="search" style="height:22px;position: absolute; right: 0px;margin: 4px;" src="images/magnifying_glass_search_1083378.svg">
- </td><td>
+    <div class="search-box">
+        <div class="swrap">
+          <input type="text" autocomplete="off" id="fq" name="q" placeholder="Search" required>
+          <input type="submit" value="Search" id="search">
+        </div>
+    </div>
+    <div style="float:right;display:inline-block">
     <span id="history"  style="background: url(images/history.png)  no-repeat center; float:right; background-size:26px 26px;display:inline-block;box-sizing:border-box; min-width:40px;height:26px;"></span>
     <span id="settings" style="background: url(images/settings.png) no-repeat center; float:right; background-size:26px 26px;display:inline-block;box-sizing:border-box; min-width:40px;height:26px;"></span>
- </td><td style="width:1px;">
     <button id="enable" class="b onsw onsw-on">On</button>
- </td></tr></table>
+    </div>
 </span>
 </div>
 <div id="res">

@@ -31,22 +31,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function loadImage(url,img,last) {
-    var t=new Image();
-    t.onload=function() {
-        if(last) img[0].onload=function(){setTimeout(()=>dosave(true),500);}
-        img.attr('src',url);
-    }
-    t.onerror=function() {
-        if (last)
-            setTimeout(()=>dosave(true),500);
-    }
-    t.src=url;
-}
-
-// for history calendar
-var lastcaldate;
-
 function dosave(all){
     var save={};
     save.lastq = $('#fq').val();
@@ -58,24 +42,94 @@ function dosave(all){
     browser.storage.local.set(save);
 }
 
+
+var imtot=0, ictot=0, imcnt=0, iccnt=0;
+
+function checkdone() {
+    if(imcnt==imtot && iccnt==ictot) {
+        dosave(true);
+        console.log('saved');
+    }
+}
+
+function loadImage(img) {
+    var t=new Image();
+    var url = img.attr('src');
+    if(url) {
+        t.onload=function() {
+            img.attr('src',url).addClass('imset');
+            imcnt++;
+            checkdone();
+        }
+        t.onerror=function(){
+            img.css('display','none').addClass('imset');
+            imcnt++;
+            checkdone();
+        }
+    } else {
+        img.css('display','none').addClass('imset');
+    }
+    t.src=url;
+    setTimeout(function(img,t){
+        if(!img.hasClass('imset')) {
+            img.css('display','none').addClass('imset');
+            t.src="";
+        }
+    },6000,img,t);
+}
+
+function loadIco(img) {
+    var t=new Image();
+    var url = img.attr('src');
+    if(url) {
+        t.onload=function() {
+            img.attr('src',url).addClass('imset');
+            iccnt++;
+            checkdone();
+        }
+        t.onerror=function(){
+            img.attr('src',"images/home.ico");
+            iccnt++;
+            checkdone();
+        }
+    } else {
+        img.attr('src',home.ico).addClass('imset');
+    }
+    t.src=url;
+    setTimeout(function(img,t){
+        if(!img.hasClass('imset')) {
+            img.attr('src',"images/home.ico").addClass('imset');
+            t.src="";
+        }
+    },3000,img,t);
+}
+
+// for history calendar
+var lastcaldate;
+
 function attachhov(){
     $('.hov').hover(function(){
-        var t=$(this),h,ho,bh=window.innerHeight+window.scrollY,top=0;
+        var t=$(this),h,top,bh=window.innerHeight+window.scrollY,bottom=25;
         var im= new Image();
+        var isinline = t.hasClass('hov-inline');
+        var clearance=250;
+        if(isinline) {
+            bottom=140;
+            clearance=180;
+        }
+        t.closest('section').css('z-index','100');
+        $('.ishov2').remove();
         im.onload = function() {
-            var ht = (im.height<250)?im.height:250;
-            ho=t.offset();
             h=t.parent().find('.hov');
-            ho=h.offset();
-            ho.bottom=ho.top+ht;
-            if (ho.top<20) top = -ho.top + 20;
-            if (ho.bottom > bh) top = bh-ho.bottom;
-            t.after('<img class="ishov" style="top:'+top+'px;" src="'+t.attr('src')+'">');
+            top=h.offset().top - $(window).scrollTop();
+            if (top<280) bottom=top-clearance;
+            t.after('<img class="ishov2" style="bottom:'+bottom+'px;" src="'+t.attr('src')+'">');
         }
         $(im).addClass('hov');
         im.src=t.attr('src');
     },function(){
-        $('.ishov').remove();
+        $('.ishov2').remove();
+        $(this).closest('section').css('z-index','');
     });
 }
 
@@ -207,6 +261,16 @@ function mktitles(){
     });
 }
 
+function fmtdate(date) {
+  const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Add 1 as months are 0-indexed
+  const day = date.getDate().toString().padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+
+  return `${month}/${day}/${year} ${hours}:${minutes}`;
+}
+
 function dosearch(skip,q) {
     var res=$('#res');
     var ricos='<span title="Remove" class="rm rico hm">&#x2718;</span><span title="Remove" class="rm rmcb hm"><input type="checkbox" class="sitem" title="select item"></span>';
@@ -234,19 +298,47 @@ function dosearch(skip,q) {
           '<span style="float:right">Results '+rescnt+'</span></div>');
 
           for (var i=0;i<l;i++) {
-            var r=data.rows[i];
-            var ico= r.image ? r.image : ''+r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico' ;
-            var icl = r.image? " hov" : '';
-            var d= new Date(0);
-            d.setUTCSeconds(parseInt(r.last));
-        
-            res.append('<div data-hash="'+r.hash+'" data-dom="'+r.dom+'" id="r'+i+'" class="resi"><span class="imgwrap">'+ricos+'<img class="fimage'+icl+'" src="images/home_website_start_house.svg"></span>'+
-            '<span class="itemwrap"><span class="abstract nowrap"><a class="url-a tar" ' + (browser.t=='f'?'style="width:calc( 100% - 165px )" ':'') + 'target="_blank" href="'+r.url+'">'+
-                escapeHtml(r.title.replace(/\s+/g,' '))+'</a><span class="timestamp">('+d.toLocaleString()+')</span></span><br><span class="abstract url-span">'+r.url+
-                '</span></span><br><span class="abstract">'+r.abstract+"</span></div>");
-            
-            loadImage(ico,$('#r'+i).find('img'),(i==l-1));
+              var r=data.rows[i];
+              var ico= r.image ? r.image : ''+r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico' ;
+              var icl = r.image? " hov" : '';
+              var d= new Date(0);
+              d.setUTCSeconds(parseInt(r.last));
+              var favico=r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico';        
+              res.append(`
+<section class="entry" data-hash="${r.hash}" data-dom="${r.dom}">
+  ${ricos}
+  <div class="info">
+    <div class="link">
+      <a target="_blank" href="${r.url}">${escapeHtml(r.title.replace(/\s+/g,' '))}</a>
+    </div>
+    <div class="subtext">
+      <img src="${favico}" class="resico" />
+      <span class="url-text">&gt; ${r.url}<br>
+      </span>
+    </div>
+    <div class="description">
+        ${r.image ? '<img src="' + r.image + '" class="hov hov-inline">':''}
+        ${r.abstract}
+    </div>
+  </div>
+  <div class="thumb">
+      <span class="tstamp">(${fmtdate(d)})</span><br>`
+      + ( r.image ? `<img src=${r.image} class="hov">` : '' ) +
+  `</div>
+</section>`);
           }
+
+          imcnt=0;
+          iccnt=0;
+          
+          imtot=$('.hov').each(function(){
+              loadImage($(this));
+          }).length;
+          var cnt=0;
+          ictot=$('.resico').each(function(){
+              loadIco($(this));
+          }).length;
+
           if (skip > 9) 
               res.append('<span class="abstract" style="color:blue; float:left;margin:10px;"><a data-q="'+q+'" data-skip="'+(skip-10)+'" class="np" id="prev">Previous</a></span>');
 
@@ -650,8 +742,11 @@ $(document).ready(function(){
             $('body').append(
              `<div id="histbox" class="shbox">
                 <div id="datepicker"></div>
-                <div>
-                    <button class="groupby" style="visibility: hidden;" id="groupby">Order by Date</button>
+                <div class="sopts">
+                    <span class="grpby">
+                        <span class="by" id="bysitel" for="bysite">By Site</span>
+                        <span class="by" id="bydatel" for="bydate">By Date</span>
+                    </span>
                     <span class="swrap2">
                       <input type="text" spellcheck="false" autocomplete="off" id="dq" name="dq" placeholder="Domain Search">
                       <input id="dsearch" type="submit" value="Search">

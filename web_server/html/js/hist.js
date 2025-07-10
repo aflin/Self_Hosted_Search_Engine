@@ -360,7 +360,6 @@ function dohist(dpicker,server,user,key) {
             gset.histdata={cache:{},cacheEntries:[]}
         cache=gset.histdata.cache;
         cacheEntries=gset.histdata.cacheEntries;
-        console.log(cache);
     }
 
     function saveEntries() {
@@ -378,6 +377,7 @@ function dohist(dpicker,server,user,key) {
 
 
     function applycal() {
+        gb.css('visibility','visible');
         if(orderByDate) {
             showByDate();
         } else {
@@ -388,13 +388,13 @@ function dohist(dpicker,server,user,key) {
     }
 
     function updatecal(dateText, ignore, cb) {
+        if(!doclick) return;
         var dt=new Date();
         var m = String(dt.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
         var d = String(dt.getDate()).padStart(2, '0');
         var y = dt.getFullYear();
         var today=`${m}/${d}/${y}`;
 
-        if(!doclick) return;
         if(today!=dateText && cache[dateText]) {
             byDate = cache[dateText].byDate;
             bySite = cache[dateText].bySite;
@@ -426,7 +426,6 @@ function dohist(dpicker,server,user,key) {
                 bySite=assembleBySite();//alters res entries
                 lastDate=dateText;
                 applycal();
-                gb.css('visibility','visible');
                 //add to cache
                 cacheEntries.push(dateText);
                 cache[dateText]={byDate:byDate,bySite:bySite}
