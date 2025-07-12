@@ -264,6 +264,11 @@ function myloggingfunc_alt (logdata, logline) {
 */
 
 /* Extras for shse */
+if(process.argv[2] == "httpOnly") {
+    httpOnly=true;
+    process.argv.splice(2,1);
+}
+
 if(httpOnly) {
    serverConf.secure=false;
    serverConf.redir=false; 

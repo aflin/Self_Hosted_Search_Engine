@@ -274,6 +274,11 @@ function fmtdate(date) {
 function dosearch(skip,q) {
     var res=$('#res');
     var ricos='<span title="Remove" class="rm rico hm">&#x2718;</span><span title="Remove" class="rm rmcb hm"><input type="checkbox" class="sitem" title="select item"></span>';
+
+    $('#histbox').remove();
+    $('#res').show();
+    $('#setbox').remove();
+
     if (!q) q=$('#fq').val();
     else $('#fq').val(q);
     res.empty();

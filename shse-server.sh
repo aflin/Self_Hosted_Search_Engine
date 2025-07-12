@@ -108,6 +108,6 @@ echo "Starting web server"
 
 #make sure texislockd is running (can fail if not in path)
 $RAMPARTDIR/texislockd
-$RAMPART ${WDIR}/web_server_conf.js || {
+$RAMPART ${WDIR}/web_server_conf.js "$@" || {
     die "Server Start Failed"
 }
