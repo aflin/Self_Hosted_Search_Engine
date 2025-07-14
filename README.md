@@ -24,7 +24,7 @@ There is a certificate management page should you wish to upload valid certifica
 
 If you plan to run it behind, e.g., nginx reverse proxy (with its own valid certificates), you can start the server in httpOnly mode:
 ```
-docker run -d -p 8080:8070 -v ~/.shse-data:/data rampartfts/shse httpOnly
+docker run -d -p 8080:80 -v ~/.shse-data:/data rampartfts/shse httpOnly
 ```
 or
 ```
