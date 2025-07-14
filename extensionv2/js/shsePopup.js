@@ -310,7 +310,7 @@ function dosearch(skip,q) {
               d.setUTCSeconds(parseInt(r.last));
               var favico=r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico';        
               res.append(`
-<section class="entry" data-hash="${r.hash}" data-dom="${r.dom}">
+<section class="entry resi" data-hash="${r.hash}" data-dom="${r.dom}" id="r${i}">
   ${ricos}
   <div class="info">
     <div class="link">
