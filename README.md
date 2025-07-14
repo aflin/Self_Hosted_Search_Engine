@@ -56,7 +56,7 @@ __Certificates Page:__
 ![Certs Page](img/server-cert.png)
 
 ## Plugin
-After installing the plugin for the browser, click on the popup magnifying glass in the browser toolbar and in the popup, click on
+After installing the plugin for the browser (*and pinning it to the toolbar*), click on the popup magnifying glass in the browser toolbar and in the popup, click on
 the gear icon.
 
 ![Popup Setup Page](img/popup-config.png)
