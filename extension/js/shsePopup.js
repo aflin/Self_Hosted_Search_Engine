@@ -472,7 +472,7 @@ $(document).ready(function(){
            $('#res').show();
        } else
         browser.storage.local.get().then (function(settings){
-            var lb,key,keyrow,pass,passrow,em,ex,serv,mwidth="width",mextra='';
+            var lb,key,keyrow,pass,passrow,em,ex,serv,servval,mwidth="width",mextra='';
             gset=settings;
             //if (mobile){
             //    mwidth='width';
@@ -556,7 +556,10 @@ $(document).ready(function(){
             ex=$('#exc');
             if (settings.user) em.val(settings.user);
             //if (settings.label) lb.val(settings.label);
-            if (settings.server) serv.val(settings.server);
+            if (settings.server) {
+                serv.val(settings.server);
+                servval=settings.server.replace(/\/.*/,'');
+            }
 
             if (settings.key) key.val(settings.key)
             else {
@@ -585,7 +588,8 @@ $(document).ready(function(){
             }
 
             serv.focusout(function(){
-                settings.server=serv.val();
+                settings.server=servval=serv.val().replace(/\/.*/,'');
+console.log(servval);
                 if(!settings.noAddShseServer){ //do this only once
                     addrow(null, settings.server, 1);
                     settings.noAddShseServer=true;
@@ -600,11 +604,11 @@ $(document).ready(function(){
             });
 
             $("#retrieve").click(function(e){
-                if(!serv.val())
+                if(!servval)
                     alert("No Server Specified");
                 else {
                     let u=em.val(), p=pass.val();
-                    $.post('https://' + serv.val() + '/apps/shse/cred.json',
+                    $.post('https://' + servval + '/apps/shse/cred.json',
                         {user: u, pass: p},
                         function(data) {
                             passrow.hide();
@@ -636,9 +640,8 @@ $(document).ready(function(){
             });
             
             $('#save').click(function(){
-                var u=em.val(),
+                var u=em.val();
                     //label=lb.val(), 
-                    server=serv.val();
                 //if (/^\s+$/.test(label) || !label ) label='';
                 
                 //if( EMAIL_REGEX.test(u) ) {
@@ -647,7 +650,7 @@ $(document).ready(function(){
                     settings.smedia=$('#smedia').is(':checked');
                     settings.ytube=$('#ytube').is(':checked');
                     //settings.label=label;
-                    settings.server=server;
+                    settings.server=servval;
                     settings.key=key.val();
                     var saveex={};
                     $('.exentry').each(function(){
