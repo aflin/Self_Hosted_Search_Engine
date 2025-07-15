@@ -1,0 +1,10 @@
+//
+//  csv_parser.h
+//  csv_parser
+//
+//  Created by P. B. Richards on 10/16/20.
+//
+//
+//  This code is in the public domain. The author assumes no liability for any usage
+//  of this code, and makes no claims about its efficacy. If you replicate it please
+//  retain the "Created by" line .

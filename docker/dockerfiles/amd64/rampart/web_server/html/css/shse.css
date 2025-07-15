@@ -1,0 +1,183 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background-color: white;
+}
+
+header {
+  background-color: white;
+  padding: 0px 0px;
+  justify-content: left;
+  flex-wrap: wrap;
+}
+
+header img {
+  height: 90px;
+  width:  135px;
+  float:left;
+  position: absolute;
+  top:25px;
+}
+
+header .title-text {
+  text-align: left;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 2em;
+}
+
+header p {
+  margin: 5px 0 0 0;
+  font-size: 1em;
+  color: #ccc;
+}
+
+nav {
+  background-color: transparent;
+  padding: 10px 5px;
+  display: flex;
+  justify-content: space-between;
+  white-space: nowrap;
+  height:20px;
+  position:absolute;
+  width: 100%;
+  top:0px;
+}
+
+nav a {
+  color: #555;
+  text-decoration: none;
+  margin-right: 20px;
+}
+
+nav a:hover {
+  color: #111;
+}
+
+#showlabel{
+    cursor: pointer;
+    position: absolute;
+    left:0px;
+    top:0px;
+}
+
+#showico {
+    display:inline-block;
+    cursor:pointer;
+    transform:rotate(270deg) translate(4px,0px);
+    font-size:28px;
+    position:absolute;
+    left:-30px;top:-10px;
+    width:13px;"
+}
+
+
+footer a {
+  color: #aaa;
+  text-decoration: none;
+  margin: 0 10px;
+}
+
+footer a:hover {
+  color: #888;
+}
+
+main {
+  position: relative;
+  padding: 40px;
+  max-width: 800px;
+  margin-left: 40px;
+  background-color: #fff;
+}
+
+.rico {left: -40px; color:red;}
+.rmcb {left: -25px;}
+
+.mobile-menu {
+  display: none;
+  flex-direction: column;
+  background-color: #ffffff;
+  position: absolute;
+  top: 50px;
+  right: 0px;
+  left: 0px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  z-index: 100000;
+}
+
+/* Each link in the mobile menu */
+.mobile-menu a {
+  padding: 12px 16px;
+  margin: 4px 0;
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.mobile-menu a:hover {
+  background-color: #f0f0f0;
+}
+.hamburger {
+  display: none;
+}
+
+@media screen and (max-width: 820px) {
+    main {
+        margin-left:40px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    main {
+        margin-left:30px;
+        padding:15px;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    main {
+        margin-left:10px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .hamburger {
+      display: inline-block;
+      font-size:24px;
+      height: 40px;
+      padding: 0px 6px;
+      position: relative;
+      top: 5px;
+      vertical-align: top;
+      float: right;
+      right:5px;
+    }
+
+    .mobile-menu.show {
+        display: flex;
+    }
+    main {
+        padding-right: 5px;
+        padding-left: 5px;
+        padding-top: 0;
+    }
+    header img {
+        display: none;
+        height: 45px;
+        width: 45px;
+        margin-right: 0px;
+        float: left;
+        position: absolute;
+        top: 5px;
+        right:0;
+        object-fit: cover;
+    }
+    nav {
+        display:none;
+    }
+}

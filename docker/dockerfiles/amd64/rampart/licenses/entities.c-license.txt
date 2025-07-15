@@ -1,0 +1,6 @@
+/*	Copyright 2012, 2016 Christoph Gärtner
+	Distributed under the Boost Software License, Version 1.0
+*/
+
+Used in Rampart's printf functions with "%!H".
+Can be found at https://bitbucket.org/cggaertner/cstuff/src/master/entities.c

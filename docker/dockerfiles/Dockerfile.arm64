@@ -1,0 +1,23 @@
+FROM frolvlad/alpine-glibc
+
+# Install certs and bash
+RUN apk add --no-cache ca-certificates bash; \
+    mkdir /data
+
+WORKDIR /usr/local
+
+COPY arm64/rampart /usr/local/rampart
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY arm64/libstdc++.so.6.0.28 /usr/glibc-compat/lib/libstdc++.so.6.0.28
+COPY arm64/libstdc++.so.6 /usr/glibc-compat/lib/libstdc++.so.6
+COPY arm64/libgcc_s.so.1 /usr/glibc-compat/lib/libgcc_s.so.1
+COPY arm64/openssl /usr/local/bin/openssl
+
+
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 80 443
+
+VOLUME ["/data"]
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
