@@ -44,25 +44,24 @@ function dohist(dpicker,server,user,key) {
             }
         }, 250);
 
-      const jqXHR = $.post({
-          url: obj.url, 
-          data: obj.data, 
-          success: obj.success,
-          error: obj.error
-      });
+        const jqXHR = $.post({
+            url: obj.url, 
+            data: obj.data, 
+            success: obj.success,
+            error: obj.error
+        });
 
-      // Ensure cursor resets on complete (success or failure)
-      jqXHR.always(() => {
-        requestComplete = true;
-        clearTimeout(cursorTimeout);
-        $('body').css('cursor', '');
-      });
+        // Ensure cursor resets on complete (success or failure)
+        jqXHR.always(() => {
+          requestComplete = true;
+          clearTimeout(cursorTimeout);
+          $('body').css('cursor', '');
+        });
 
-      return jqXHR;
+        return jqXHR;
     }
 
     function lazydoms(dom, data) {
-        console.log(data);
         var res=data.rows;
         var startd = $('.ui-datepicker-group').eq(0).find('td[data-handler=selectDay]').eq(0);
         var m = parseInt(startd.attr('data-month'));
@@ -88,10 +87,11 @@ function dohist(dpicker,server,user,key) {
         $('.sitelink').click(function(e){
             e.stopImmediatePropagation();
             var day=$(this).closest('.sitediv').attr('data-day');
+            orderByDate=false;
+            setCookie('histinfo', {od:orderByDate, ld:lastDate});
             updatecal(day, null, function(data){
-                console.log("done");
                 var tar=$(`.sitediv[data-site="${dom}"]`);
-                tar.find('.sitelink').click()
+                tar.css('height','auto');
                 tar[0].scrollIntoView();
             });
         });
@@ -214,7 +214,6 @@ function dohist(dpicker,server,user,key) {
 
         bys.removeClass('bysel');
         byd.addClass('bysel');
-        orderByDate=true;
         setCookie('histinfo', {od:orderByDate, ld:lastDate});
 
         resbox.empty();
@@ -431,7 +430,11 @@ function dohist(dpicker,server,user,key) {
             delCacheEntry(dateText);
             cacheEntries.push(dateText);
             saveEntries();
-            if(lastheat) setTimeout(function(){insertheat(lastheat);},50);            
+            if(lastheat) setTimeout(function(){
+                insertheat(lastheat);
+                
+            },50);        
+            if(cb) cb();    
             return;
         }
         var c=dateText.match(/(\d+)\/(\d+)\/(\d+)/);
@@ -464,7 +467,7 @@ function dohist(dpicker,server,user,key) {
                     //console.log('deleted',en);
                 }
                 saveEntries();
-                if(cb) cb(data);
+                if(cb) cb();
             }
         }).fail(function(xhr, txt, err) {
             alert("failed to get data from server: "+txt);
