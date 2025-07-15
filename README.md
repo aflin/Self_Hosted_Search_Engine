@@ -6,13 +6,23 @@ We have not yet published to chrome, safari or firefox stores.
 
 A self signed firefox extension is available in this directory.  To install, download the [raw file](https://github.com/aflin/Self_Hosted_Search_Engine/raw/refs/heads/main/firefox-0.3.4-signed.xpi) and drag and drop it onto any open firefox page.
 
-For Chrome, you will need to enable developer tools and use the *extension/* directory in this repo to load the extension.
+For Chrome, you will need to enable developer tools and use the [/extension/](extension/) directory in this repo to load the extension.
 
 # Server
-The server requires [rampart](https://rampart.dev/) to be installed.  Clone this repo and run the *shse-server.sh* command to start the server.
-More configuration can be found in the *web_server/web_server_conf.js* file.
 
-A docker is also available.  You will likely want your data to persist, so here is a suggested use:
+## Direct Use:
+The server requires [rampart](https://rampart.dev/) to be installed.  Clone this repo and run the *shse-server.sh* command to start the server.
+More configuration can be found in the [web_server/web_server_conf.js](web_server/web_server_conf.js) file.
+
+If you plan to run it behind, e.g., nginx reverse proxy (with its own valid certificates), you can start the server in httpOnly mode
+```
+./shse-server.sh httpOnly
+```
+In this mode, it will be available on port **8070** (or the ``httpOnlyPort`` specified in [the web_server_conf.js](web_server/web_server_conf.js) file).
+
+## Docker Command Line:
+
+You will likely want your data to persist in order to later pull the latest shse image without losing your data, so here is a suggested use:
 ```
 mkdir ~/.shse-data
 docker run -d -p 4443:443 -v ~/.shse-data:/data rampartfts/shse
@@ -26,16 +36,24 @@ If you plan to run it behind, e.g., nginx reverse proxy (with its own valid cert
 ```
 docker run -d -p 8080:80 -v ~/.shse-data:/data rampartfts/shse httpOnly
 ```
-or
-```
-./shse-server.sh httpOnly
-```
-In this mode, it will be available on port 8070 (or the ``httpOnlyPort`` specified in [the web_server_conf.js](web_server/web_server_conf.js) file).
+In this mode, it will be available on port **8080** (or the port specified with the above ``-v`` option).
 
+## Docker Desktop:
 
-__Do not__ run more than one docker using the same ``/data`` volume or corruption will likely occur (database locking happens inside each container and is not shared between containers).
+First find the shse image and pull:
 
-Note that although this project is permissively licensed, as is [rampart](https://rampart.dev/), the sql search engine is under a [different license](https://github.com/aflin/rampart/blob/main/LICENSE-rsal.txt).  For most DIYers, this should not restrict your use in any way.  If you want to sell this as a service or product, you must contact us.
+![docker desktop pull](img/ddpull.png)
+
+Find it in the images tab and click run:
+
+![docker desktop run](img/ddrun.png)
+
+Add options for ports and to mount the ``/data`` directory, then run it.
+
+![docker desktop run options](img/ddopt.png)
+
+## Docker Caveats
+__Do not__ run more than one docker using the same ``/data`` volume host path, or corruption will likely occur (database locking happens inside each container and is not shared between containers).
 
 # Setup
 
@@ -83,6 +101,10 @@ It can be collapsed to minimize its presense on the page.
 
 ![In Tab Controls](img/in-tab.gif)
 
-If you do not wish to index every page, you can click the pause button in the control bar.  When paused, pages can be individually indexed by clicking the upload button in the control bar.
+If you do not wish to index every page, you can click the pause button in the control bar to enter *manual mode*.  When in *manual mode*, pages are not automatically saved to the server, but can be individually indexed by clicking the upload button in the control bar.
+
+# License Caveats
+
+Note that although this project is permissively licensed, as is [rampart](https://rampart.dev/), the sql search engine is under a [different license](https://github.com/aflin/rampart/blob/main/LICENSE-rsal.txt).  For most DIYers, this should not restrict your use in any way.  If you want to sell this as a service or product, you must contact us.
 
 Enjoy!
