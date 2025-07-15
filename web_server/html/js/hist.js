@@ -33,6 +33,34 @@ function dohist(dpicker,server,user,key) {
         return ret;
     }
 
+    function wpost(obj) {
+        let cursorTimeout;
+        let requestComplete = false;
+
+        // Show hourglass cursor after 500ms if request is still pending
+        cursorTimeout = setTimeout(() => {
+            if (!requestComplete) {
+                $('body').css('cursor', 'wait');
+            }
+        }, 250);
+
+      const jqXHR = $.post({
+          url: obj.url, 
+          data: obj.data, 
+          success: obj.success,
+          error: obj.error
+      });
+
+      // Ensure cursor resets on complete (success or failure)
+      jqXHR.always(() => {
+        requestComplete = true;
+        clearTimeout(cursorTimeout);
+        $('body').css('cursor', '');
+      });
+
+      return jqXHR;
+    }
+
     function lazydoms(dom, data) {
         console.log(data);
         var res=data.rows;
@@ -156,7 +184,7 @@ function dohist(dpicker,server,user,key) {
         y = parseInt(endd.attr('data-year'));
         d = parseInt(endd.find('a').attr('data-date'));
         var e = new Date(`${y}-${m<9?'0':''}${(m+1)}-${d<10?'0':''}${d}T23:59:59.9999`);
-        $.post({
+        wpost({
             url:server+'/apps/shse/hist.json',
             data:{dom:dom, par:`${s.toString()} ${e.toString()}`,start:s.getTime(), end:e.getTime(), user:user, key:key},
             success: function(data){
@@ -412,7 +440,7 @@ function dohist(dpicker,server,user,key) {
         var s = new Date(`${c[3]}-${m}-${d}T00:00:00`);
         var e = new Date(`${c[3]}-${m}-${d}T23:59:59.999`);
  
-        $.post({
+        wpost({
             url:server+'/apps/shse/hist.json',
             data:{date:dateText, start:s.getTime(), end:e.getTime(), user:user, key:key},
             success: function(data){
@@ -466,7 +494,7 @@ function dohist(dpicker,server,user,key) {
             // hence the timeout
             var firstmonth=parseInt($('.ui-datepicker-month').val())+1;
             var firstyear =parseInt($('.ui-datepicker-year').val());
-            $.post({
+            wpost({
                 url:server+'/apps/shse/hist.json',
                 //data:{startm:, starty:y },
                 data:{dom:dom, startm:firstmonth, starty:firstyear,user:user, key:key },
@@ -547,7 +575,7 @@ function dohist(dpicker,server,user,key) {
     });
 
     function nores(dom) {
-        $.post({
+        wpost({
             url:server+'/apps/shse/hist.json',
             data:{dom:dom, getLast:true, user:user, key:key},
             success: function(data){
