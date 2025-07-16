@@ -211,7 +211,18 @@ function mktitles(){
             req.hash.push( $(this).closest('.entry').attr('data-hash') );
         });
 
-        dodel(popup, req);
+        if( req.hash.length==0) {
+            popup.html('<table><tr><td><span style="white-space:nowrap;background-color:red">Nothing selected</span></td></tr></table>');
+
+            setTimeout(function(){
+                popup.find('table').hide(250,function(){
+                    popup.remove();
+                    if (data.status=='ok') dosearch();
+                });
+            },500);
+        }
+        else
+            dodel(popup, req);
     });
     
     $('.rico').click(function(){

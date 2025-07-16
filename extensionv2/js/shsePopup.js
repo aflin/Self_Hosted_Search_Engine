@@ -162,13 +162,13 @@ function mktitles(){
             t.css('transform','rotate(270deg) translate(4px,0px)');
             t.removeClass('isvis');
             t.attr('title','click to show database editing options');
-            $('#delsel').hide();
+            $('#delsel').css('visibility','hidden');
         } else {
             $('.hm').show(250);
             t.css('transform','rotate(90deg)');
             t.addClass('isvis');
             t.attr('title','click to hide database editing options');
-            $('#delsel').show();
+            $('#delsel').css('visibility','visible');
         }
     });
 
@@ -183,7 +183,7 @@ function mktitles(){
                 var msg,color,delay=1000;
 
                 if (data.status=='ok') {
-                    msg="Success: deleted "+data.deleted+" items";
+                    msg="Deleted "+data.deleted+" items";
                     color="yellow";
                 } else {
                     msg=data.status;
@@ -220,7 +220,18 @@ function mktitles(){
             req.hash.push( $(this).closest('.resi').attr('data-hash') );
         });
 
-        dodel(popup, req);
+        if( req.hash.length==0) {
+            popup.html('<table><tr><td><span style="white-space:nowrap;background-color:red">Nothing selected</span></td></tr></table>');
+
+            setTimeout(function(){
+                popup.find('table').hide(250,function(){
+                    popup.remove();
+                    if (data.status=='ok') dosearch();
+                });
+            },500);
+        }
+        else
+            dodel(popup, req);
     });
     
     $('.rico').click(function(){
