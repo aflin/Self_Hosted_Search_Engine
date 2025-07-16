@@ -1,0 +1,93 @@
+Privacy Policy for Self Hosted Search Engine
+Published by Moat Crossing Systems, LLC
+
+Effective Date: July 16th, 2025
+
+Moat Crossing Systems, LLC (“we,” “our,” or “us”) values your privacy.  This
+Privacy Policy describes how the Self Hosted Search Engine browser extension
+handles your data and protects your personal information.
+
+1.  Overview
+
+The Self Hosted Search Engine extension is designed to help users index and
+search their own browsing history by saving visited web pages to a
+self-hosted server under their full control.  We do not collect, transmit,
+or store any personal data on external servers.  All data remains local or
+is transmitted only to the user’s configured self-hosted instance.
+
+2. What Data Is Accessed and Why
+
+The extension requires the following permissions in order to function:
+
+    tabs & activeTab: Used to detect which pages you visit, retrieve page
+    titles and URLs, and optionally display an in-page control bar for
+    managing indexing behavior (e.g., pause, upload).
+
+    webRequest (with <all_urls>): Used to monitor network
+    traffic—specifically to detect and retrieve YouTube caption files that
+    are loaded via background requests.  This ensures that captions can be
+    indexed alongside video pages, if the user opts in.
+
+    storage: Used to save local settings such as:
+
+        Your self-hosted server address
+
+        API access keys
+
+        Domain blacklist/whitelist preferences
+
+        Extension state (e.g., ON/OFF, indexing mode)
+
+    host permissions (<all_urls>): Required for the extension’s content
+    scripts to access and index content on pages you visit, based on your
+    configured preferences.
+
+3. What Data Is Stored or Transmitted
+
+    Stored Locally: Configuration settings and state information are stored
+    locally in your browser using Chrome’s storage API.
+
+    Transmitted: The extension sends page metadata (title, URL, and
+    optionally page content, YouTube captions, and social media posts) only
+    to the self-hosted server you configure.  This server is not operated or
+    accessible by Moat Crossing Systems, LLC.
+
+We do not receive or collect any data from your browser or your server. 
+There is no analytics, telemetry, or tracking code in this extension.
+
+4. User Control and Data Deletion
+
+Users retain full control over:
+
+    Which sites are indexed (via the blacklist/whitelist)
+
+    Whether indexing is automatic or manual
+
+    What data is stored or deleted on their own server
+
+Users can delete any saved data at any time via the extension popup or the
+server's web interface.
+
+5. Third-Party Services
+
+This extension does not use any third-party analytics, advertising, or
+tracking services.  It does not interact with or send data to any
+cloud-based infrastructure or external API beyond the user’s configured
+server.
+
+6. Security Measures
+
+All communication with the user’s server is made via HTTPS.  During setup,
+users may use self-signed certificates or upload their own trusted
+certificates to secure the connection.  The extension does not store
+passwords or authentication tokens beyond what is needed to access the
+user’s configured backend.
+
+7. Changes to This Policy
+
+We may update this Privacy Policy from time to time. Any changes will be posted at this location and take effect immediately upon posting.
+
+8. Contact Us
+
+If you have any questions or concerns about this Privacy Policy or how your data is handled, please
+submit an issue on the github page at https://github.com/aflin/Self_Hosted_Search_Engine/issues
