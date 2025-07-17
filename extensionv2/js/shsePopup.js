@@ -117,7 +117,7 @@ function attachhov(){
             bottom=140;
             clearance=180;
         }
-        t.closest('section').css('z-index','100');
+        t.closest('section').css('z-index','100000');
         $('.ishov2').remove();
         im.onload = function() {
             h=t.parent().find('.hov');
