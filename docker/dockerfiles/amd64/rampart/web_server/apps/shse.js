@@ -146,9 +146,9 @@ function getDomain(url){
 var cookie_expiration=86400;
 
 
-var Sql = use.sql;
-var crypto = use.crypto;
-var urlutil=use.url;
+var Sql     = use.sql;
+var crypto  = use.crypto;
+var urlutil = use.url;
 
 var sql = Sql.connect(`${serverConf.dataRoot}/shse/`, true);
 
@@ -195,8 +195,18 @@ function makeSystemTables() {
     return true;
 }
 
+function sanitize_name(name) {
+    var sanitized = name.replace(/[^a-zA-Z0-9_]/g, '_');
 
-function makeUserTables(tbname) {
+    if(name.length > 19 || sanitized != name) {
+        //add hash to substr
+        sanitized = sanitized.substr(0,8) + '_' + hash(name).substr(0,10);
+    }
+    return sanitized;
+}
+
+function makeUserTables(name) {
+    var tbname = sanitize_name(name);
     if(!tableExists(`${tbname}_pages`)) {
         sql.exec(`create table ${tbname}_pages
         ( Hash byte(20), Last date, LastV date, Numvisits int,
@@ -472,6 +482,8 @@ function checkcred(req, require_admin) {
 
     sql.one("update sessions set Expires=? where Sessid=?", [cookie_expiration + now, req.cookies.sessid]);
 
+    res.tbname = sanitize_name(res.name);
+
     return res;
 }
 
@@ -496,12 +508,13 @@ function dosearch(q,u,s) {
 var ricos='<span title="Remove" class="rm rico hm">&#x2718;</span><span title="Remove" class="rm rmcb hm"><input type="checkbox" class="sitem" title="select item"></span>';
 
 function searchpage(req) {
-    var top, user, cred=checkcred(req);
+    var top, user, tbname, cred=checkcred(req);
 
     if(!cred)
         return loginredir;
     user=cred.name;
-    if(!user)
+    tbname=cred.tbname;
+    if(!user || !tbname)
         return loginredir;
 
     var res, p=req.params;
@@ -524,7 +537,7 @@ ${htmlTopend}
 ${htmlMain}
 `);
     if(p.q) {
-        res=dosearch(p.q,user,skip);
+        res=dosearch(p.q,tbname,skip);
         var total = res.countInfo.indexCount;
         var cntinfo = res.rowCount ?
                       `Results ${skip+1}-${skip+res.rowCount} of ${total}` :
@@ -674,19 +687,7 @@ ${endHtmlBody}
 
 var nMonths=3;
 
-function getheatstats(user) {
-    var d, res = sql.one("select min(Date) d from ${user}_history");
-    if(!res) return {}
-    d = dateFmt("%Y-%m-%d 00:00:00", res.d);
-    res = sql.one("select * from ${user}_heatstats where Date=?", [d]);
-    if(!res) makeheatstats(user);
-
-
-
-//    "select dayseq(Date) d, Date, count(d) from aaron_history group by dayseq(Date) order by dayseq(Date)"
-}
-
-function heatdata(req,p,user) {
+function heatdata(req,p,tbname) {
     var nm = p.nMonths ? p.nMonths : nMonths;
     var sm=parseInt(p.startm), sy=parseInt(p.starty);
     var em=sm+nm; ey=sy;
@@ -714,7 +715,7 @@ function heatdata(req,p,user) {
     // no caching in heatstats if dom
     if(p.dom) {
         rows[expected-1]=0;
-        sql.exec(`select Day Day, count(Day) Cnt from ${user}_history 
+        sql.exec(`select Day Day, count(Day) Cnt from ${tbname}_history 
                     where Day >= ? and Day <= ? and Dom=? group by Day order by Day`,
             [startdate,enddate,p.dom],
             function(row,i) {
@@ -732,7 +733,7 @@ function heatdata(req,p,user) {
     }
 
     //get them from heatstat table
-    res = sql.exec(`select Day, Cnt from ${user}_heatstats where Day >= ? and Day <= ?`,
+    res = sql.exec(`select Day, Cnt from ${tbname}_heatstats where Day >= ? and Day <= ?`,
         [startdate, enddate], {maxRows:-1},
         function(row) {
             if(row.Cnt>max)max=row.Cnt;
@@ -745,11 +746,11 @@ function heatdata(req,p,user) {
         {
             if(rows[i]===undefined || i==today) {
                 var curday=i+startdate;
-                res=sql.one(`select count(Day) cnt from ${user}_history where Day = ?`,[curday]);
+                res=sql.one(`select count(Day) cnt from ${tbname}_history where Day = ?`,[curday]);
                 if(res && res.cnt) res=res.cnt;
                 else res=0;
                 if(curday!=today) //this one can still change, don't insert
-                    sql.one(`insert into ${user}_heatstats values (?,?)`,[curday,res]);
+                    sql.one(`insert into ${tbname}_heatstats values (?,?)`,[curday,res]);
                 rows[i]=res;
                 if(res>max)max=res;
             }
@@ -758,10 +759,10 @@ function heatdata(req,p,user) {
     return {json: {rows:rows,max:max}};
 }
 
-function bydom(req, p, user) {
+function bydom(req, p, tbname) {
 
     var startdate=parseInt(p.start)/1000, enddate=(parseInt(p.end)+1)/1000;
-    var res=sql.one(`select count(Dom) cnt from ${user}_history
+    var res=sql.one(`select count(Dom) cnt from ${tbname}_history
                         where Date >= ? and Date < ? and Dom=?`,
                         [startdate, enddate, p.dom]);
     var cnt=res.cnt;
@@ -769,7 +770,7 @@ function bydom(req, p, user) {
     if(cnt > 2000) {
         return {json:{res:[], nrows: cnt, displayLazy:true}}
     }
-    var res=sql.exec(`select bintohex(Hash) Hash, Date, Dom, Day, Url, Title from ${user}_history
+    var res=sql.exec(`select bintohex(Hash) Hash, Date, Dom, Day, Url, Title from ${tbname}_history
                         where Date >= ? and Date < ? and Dom=? order by Date DESC;`,
               {maxRows: -1},[parseInt(p.start)/1000, (parseInt(p.end)+1)/1000, p.dom]);
 
@@ -779,15 +780,16 @@ function bydom(req, p, user) {
 
 function histdata(req) {
     var p=req.params;
-    var user;
+    var user,tbname;
     var sres = checkeither(req);
     if(sres.status)
         return makeReply( {json: sres} );
-    else
+    else {
         user=sres.user;
-
+        tbname=sres.tbname;
+    }
     if(p.getFirst && p.dom) {
-        var res = sql.one(`select Date from ${user}_history where Dom=?dom order by Day`,p);
+        var res = sql.one(`select Date from ${tbname}_history where Dom=?dom order by Day`,p);
         if(res)
             return{json:{start:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',res.Date)}};
         else
@@ -795,7 +797,7 @@ function histdata(req) {
     }
 
     if(p.getLast && p.dom) {
-        var res = sql.one(`select Date from ${user}_history where Dom=?dom order by Day DESC`,p);
+        var res = sql.one(`select Date from ${tbname}_history where Dom=?dom order by Day DESC`,p);
         if(res)
             return{json:{end:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',res.Date)}};
         else
@@ -803,13 +805,13 @@ function histdata(req) {
     }
 
     if(p.startm && p.starty)
-        return heatdata(req,p,user);
+        return heatdata(req,p,tbname);
 
     if(!p.start || !p.end)
         return { json: {} }
 
     if(p.dom)
-        return bydom(req,p,user);
+        return bydom(req,p,tbname);
 
     if(!p.date)
         return { json: {} }
@@ -820,9 +822,9 @@ function histdata(req) {
 
     start+=' 00:00:00';
 
-//    return {txt: `select * from ${user}_history where Date >= ? and Date < ? order by Date; ${parseInt(p.start)/1000} ${(parseInt(p.end)+1)/1000}`}
+    //    return {txt: `select * from ${tbname}_history where Date >= ? and Date < ? order by Date; ${parseInt(p.start)/1000} ${(parseInt(p.end)+1)/1000}`}
 
-    var res=sql.exec(`select bintohex(Hash) Hash, Date, Dom, Day, Url, Title from ${user}_history where Date >= ? and Date < ? order by Date DESC;`,
+    var res=sql.exec(`select bintohex(Hash) Hash, Date, Dom, Day, Url, Title from ${tbname}_history where Date >= ? and Date < ? order by Date DESC;`,
               {maxRows: -1},[parseInt(p.start)/1000, (parseInt(p.end)+1)/1000]);
 
     return({json:{res:res, start:dateFmt('%Y-%m-%dT%H:%M:%S.000Z',start), end:dateFmt('%Y-%m-%dT%H:%M:%S.999Z',end)}});
@@ -1182,6 +1184,7 @@ function make_acctinfo(email,pass) {
 }
 
 function deluser(user) {
+    var tbname = sanitize_name(user);
     if(getType(user)!='String' || user.length==0)
         return false;
 
@@ -1191,9 +1194,9 @@ function deluser(user) {
 
     sql.one("delete from accounts where Acctid=?",[user]);
     sql.one("delete from sessions where Acctid=?",[user]);
-    sql.one(`drop table ${user}_pages`);
-    sql.one(`drop table ${user}_history`);
-    sql.one(`drop table ${user}_heatstats`);
+    sql.one(`drop table ${tbname}_pages`);
+    sql.one(`drop table ${tbname}_history`);
+    sql.one(`drop table ${tbname}_heatstats`);
 
     return true;
 }
@@ -1544,11 +1547,12 @@ function checkkey(name,key) {
 
 function checkeither(req) {
     var p=req.params;
-    var user,type='u';
+    var user, tbname, type='u';
     if(p.user || p.key) {
-        if(checkkey( p.user, p.key) )
+        if(checkkey( p.user, p.key) ) {
             user=p.user;
-        else
+            tbname=sanitize_name(user);
+        } else
             return {status:'bad key'};
     }
     else if (req.cookies.sessid) {
@@ -1557,17 +1561,18 @@ function checkeither(req) {
         if(!cred)
             return {status:'bad session'};
         user=cred.name;
+        tbname=cred.tbname;
         if(!user)
             return {status:'bad session'};;
         type=cred.type;
     } else {
         return {status:'not logged in or failed to provide user/key'}
     }
-    return {user:user, type:type};
+    return {user:user, type:type, tbname: tbname};
 }
 
 function store (req) {
-    var p=req.params;
+    var p=req.params, tbname;
     if(! checkkey( p.user, p.key) )
         return makeReply( {json: {status:'bad key'}} );
 
@@ -1580,6 +1585,7 @@ function store (req) {
     if(/^file:\/\//.test(p.furl))
         comp.host="FILE";
 
+    tbname = sanitize_name(p.user);
     p.furl = comp.url;
     p.dom  = comp.host;
     if(!p.img) p.img="";
@@ -1587,12 +1593,12 @@ function store (req) {
     p.text = p.title + "\n" + p.furl + "\n" + p.text;
 
     var hash=crypto.sha1(p.furl, true);
-    var res = sql.exec(`insert into ${p.user}_pages values (?,?,?,?, ?,?,?, ?,?,?);`,
+    var res = sql.exec(`insert into ${tbname}_pages values (?,?,?,?, ?,?,?, ?,?,?);`,
         [hash, 'now', 'now', 1, p.dom, p.furl, p.img, p.title, '', p.text]  );
 
     if(res.rowCount == 0) {
         if( sql.errMsg.indexOf('insert duplicate value') > -1 ) {
-            res = sql.exec(`update ${p.user}_pages set Last='now', LastV='now', Numvisits = Numvisits + 1,
+            res = sql.exec(`update ${tbname}_pages set Last='now', LastV='now', Numvisits = Numvisits + 1,
                             Image=?, Title=?, Text=? where Hash=?`,
                             [p.img, p.title, p.text, hash]
                           );
@@ -1608,7 +1614,7 @@ function store (req) {
         if(comp)
             p.dom=comp.domain? comp.domain:comp.host;
         p.hash=hash;
-        sql.one(`insert into ${p.user}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, ?dom, '', ?title )`,p);
+        sql.one(`insert into ${tbname}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, ?dom, '', ?title )`,p);
     }
     return makeReply( {json: {status:'ok'}} );
 }
@@ -1616,14 +1622,16 @@ function store (req) {
 
 function results(req) {
     var p=req.params;
-    var user;
+    var user, tbname;
     var sres = checkeither(req);
     if(sres.status)
         return makeReply( {json: sres} );
-    else
+    else {
         user=sres.user;
+        tbname=sres.tbname;
+    }
 
-    var res=dosearch(p.q, user, p.sk);
+    var res=dosearch(p.q, tbname, p.sk);
     return makeReply( {json: res} );
 }
 
@@ -1641,7 +1649,7 @@ function delentry(req){
     if(sres.status)
         return makeReply( {json: sres} );
 
-    var user=sres.user;
+    var user=sres.user, tbname=sres.tbname;
 
     if(p.furl) {
         var comp = urlutil.components(p.furl);
@@ -1652,14 +1660,14 @@ function delentry(req){
     }
 
     if(p.dom) {
-        res=sql.exec(`delete from ${user}_pages where Dom=?`, [p.dom]);
+        res=sql.exec(`delete from ${tbname}_pages where Dom=?`, [p.dom]);
         total+=res.rowCount;
     }
 
     if(p.hash) {
         var res, i=0, hashes=p.hash;
         for(;i<hashes.length;i++) {
-            res=sql.exec(`delete from ${user}_pages where Hash=?`, [dehexify(hashes[i])]);
+            res=sql.exec(`delete from ${tbname}_pages where Hash=?`, [dehexify(hashes[i])]);
             total+=res.rowCount;
         }
     }
@@ -1668,7 +1676,7 @@ function delentry(req){
 }
 
 function checkentry(req) {
-    var p=req.params;
+    var p=req.params, tbname;
 
     if(! checkkey( p.user, p.key) )
         return makeReply( {json: {status:'bad key'}} );
@@ -1681,21 +1689,22 @@ function checkentry(req) {
     //        Label varchar(16), Title varchar(64)
     var herrorMsg = false, herror=false;
 
+    tbname=sanitize_name(p.user);
     if(p.skip != "true") {
         var comp = getDomain(p.furl);
         if(comp)
             p.dom=comp.domain? comp.domain:comp.host;
-        herror = !sql.one(`insert into ${p.user}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, ?dom, '', ?title )`,p);
+        herror = !sql.one(`insert into ${tbname}_history values( ?hash, 'now', dayseq( convert('now','date')), ?furl, ?dom, '', ?title )`,p);
         if(herror) herrorMsg = sql.errMsg;
     }
 
     //check if already saved
-    var res = sql.one(`select convert( Last , 'int' ) last from ${p.user}_pages where Hash=?`, [p.hash]);
+    var res = sql.one(`select convert( Last , 'int' ) last from ${tbname}_pages where Hash=?`, [p.hash]);
 
     if(!res)
         res = {saved:false};
     else {
-        sql.one(`update ${p.user}_pages set LastV='now', Numvisits=Numvisits+1 where Hash=?`, [p.hash]);
+        sql.one(`update ${tbname}_pages set LastV='now', Numvisits=Numvisits+1 where Hash=?`, [p.hash]);
         res.saved = true;
     }
     res.herror=herror;
@@ -1713,7 +1722,7 @@ function autocomp(req){
 
     if(sres.status)
         return makeReply( {json: sres} );
-    var user = sres.user;
+    var user = sres.user, tbname=sres.tbname;
     var q = req.query.query;
     var cwords, word;
 
@@ -1728,11 +1737,11 @@ function autocomp(req){
         sql.set({"indexaccess":true});
         if(p.dom)
             res=sql.exec(
-            `select Word value from ${user}_history_Dom_ftx where Word matches ? order by Count DESC`,
+            `select Word value from ${tbname}_history_Dom_ftx where Word matches ? order by Count DESC`,
             [word.toLowerCase()+'%']);
         else
             res=sql.exec(
-            `select Word value from ${user}_pages_Text_ftx where Word matches ? order by Count DESC`,
+            `select Word value from ${tbname}_pages_Text_ftx where Word matches ? order by Count DESC`,
             [word.toLowerCase()+'%']);
         cwords=res.rows;
     }
@@ -1748,11 +1757,11 @@ function autocomp(req){
 
         if(p.dom)
             res=sql.exec(
-                `select Word value from ${user}_history_Dom_ftx where Word matches ? order by Count DESC`,
+                `select Word value from ${tbname}_history_Dom_ftx where Word matches ? order by Count DESC`,
                 [word.toLowerCase()+'%']);
         else
             res=sql.exec(
-                `select Word value from ${user}_pages_Text_ftx where Word matches ? order by Count DESC`,
+                `select Word value from ${tbname}_pages_Text_ftx where Word matches ? order by Count DESC`,
                 [word.toLowerCase()+'%']);
         cwords = res.rows;
 
