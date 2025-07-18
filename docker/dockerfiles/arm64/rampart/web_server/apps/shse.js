@@ -202,6 +202,8 @@ function sanitize_name(name) {
         //add hash to substr
         sanitized = sanitized.substr(0,8) + '_' + hash(name).substr(0,10);
     }
+    if(sanitized.charAt(0)=='_')
+        sanitized = "x"+sanitized.substring(1);
     return sanitized;
 }
 
