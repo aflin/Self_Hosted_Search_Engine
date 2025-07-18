@@ -560,6 +560,7 @@ function dohist(dpicker,server,user,key) {
     if(dq.length && dq.devbridgeAutocomplete) {
         dq.devbridgeAutocomplete({
             serviceUrl: server+'/apps/shse/autocomp.json?dom=1',
+            params: {user: user, key: key},
             dataType: 'json',
             minChars: 3,
             noCache: false
