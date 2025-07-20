@@ -2,12 +2,10 @@
   "manifest_version": 3,
   "name": "Self Hosted Search Engine",
   "description": "Automatically or manually save contents of visited pages to a self hosted full text search engine.",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "author": "Aaron Flin",
   "permissions": [
-     "tabs",
      "storage",
-     "activeTab",
      "webRequest"
   ],
   "background": {
@@ -22,7 +20,6 @@
   "action": {
         "default_title": "Self Hosted Search Engine",
         "default_icon": {
-          "19":"images/icon20.png",
           "20":"images/icon20.png",
           "38":"images/icon38.png"
         },  
