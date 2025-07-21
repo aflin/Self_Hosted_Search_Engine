@@ -2,11 +2,9 @@
 Browser extension and server saves visited pages to a personal search engine
 
 # Extension
-We have not yet published to chrome, safari or firefox stores.
+We have not yet published to safari stores. Chrome web store is pending.  Official Firefox extension is now available [here](https://addons.mozilla.org/en-US/firefox/addon/self-hosted-search-engine/).
 
-A self signed firefox extension is available in this directory.  To install, download the [raw file](https://github.com/aflin/Self_Hosted_Search_Engine/raw/refs/heads/main/firefox-signed.xpi) and drag and drop it onto any open firefox page.
-
-For Chrome, you will need to enable developer tools and use the [/extension/](extension/) directory in this repo to load the extension.
+For now, to use in Chrome, you will need to enable developer tools and use the [/extension/](extension/) directory in this repo to load the extension. We will update when the extension is on the chrome web store.
 
 # Server
 
