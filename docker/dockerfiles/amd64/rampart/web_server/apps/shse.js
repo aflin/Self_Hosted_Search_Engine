@@ -492,7 +492,13 @@ function checkcred(req, require_admin) {
 function dosearch(q,u,s) {
     s= s ? parseInt(s) :0;
 
-    sql.set({minwordlen:5});
+    sql.set({
+        minwordlen: 5,
+        // the full suffix list (https://rampart.dev/docs/sql-set.html#suffixlist) is a bit
+        // much for a small corpus, especially when doing one word searches.  Here is a slightly
+        // more sane list.  This might change in the future.
+        suffixList: ["'",  "ies",  "s", 'ing', 'tion', 'sion', "able", "ible", 'ic', 'ed']
+    })
     if(s>90)
         sql.set({likeprows: s+100});
     //  image, url, last, hash, dom, title, abstract
