@@ -493,7 +493,8 @@ function dosearch(q,u,s) {
     s= s ? parseInt(s) :0;
 
     sql.set({
-        minwordlen: 5,
+        alEquivs: true,  //allow searches with '~myterm' for thesaurus lookup
+        minwordlen: 6,
         // the full suffix list (https://rampart.dev/docs/sql-set.html#suffixlist) is a bit
         // much for a small corpus, especially when doing one word searches.  Here is a slightly
         // more sane list.  This might change in the future.
@@ -503,14 +504,11 @@ function dosearch(q,u,s) {
         sql.set({likeprows: s+100});
     //  image, url, last, hash, dom, title, abstract
     var res=sql.exec(`select bintohex(Hash) hash, convert( Last , 'int' ) last, Dom dom, Url url, Image image, Title title,
-        Text abstract from ${u}_pages where Text likep ?`,
-        [q], {skipRows: s, includeCounts:true }
+        stringformat('%mbH',?q,abstract(Text,0,'querymultiple',?q)) abstract
+        from ${u}_pages where Text likep ?q`,
+        {q:q}, {skipRows: s, includeCounts:true }
     );
 
-    for (var i=0; i<res.rows.length; i++) {
-        var row=res.rows[i];
-        row.abstract = Sql.abstract(row.abstract, {max:230, style:'querybest', query:q, markup:"%mbH"});
-    }
     return res;
 }
 
@@ -541,7 +539,7 @@ ${endHtmlHead}
 ${htmlBody}
 ${top}
 ${hamHtml}
-${htmlSearch}value="${q}" ${endHtmlSearch}
+${htmlSearch}value="${%H:q}" ${endHtmlSearch}
 ${htmlTopend}
 ${htmlMain}
 `);
