@@ -492,6 +492,7 @@ function checkcred(req, require_admin) {
 function dosearch(q,u,s) {
     s= s ? parseInt(s) :0;
 
+    sql.set({minwordlen:5});
     if(s>90)
         sql.set({likeprows: s+100});
     //  image, url, last, hash, dom, title, abstract
