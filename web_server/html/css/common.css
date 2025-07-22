@@ -203,7 +203,7 @@
     visibility:hidden;
 }
 .autocomplete-suggestions {
-    font-size:18px;
+    font-size:20px;
     border:1px solid #999;
     background:#FFF;
     cursor:default;
@@ -211,6 +211,17 @@
     -webkit-box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);
     -moz-box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);
     box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);
+    border-top: none !important;
+    transform: translate(-1px,-10px);
+    padding-top: 10px;
+    border: 1px solid #aaa;
+    box-shadow:none;
+    padding-left: 5px;
+}
+.autocomplete-suggestions.domAuto {
+    font-size:16px;
+    transform: translate(-1px,-5px);
+    padding-left:1px;
 }
 .autocomplete-suggestion {
     padding:2px 5px;
@@ -305,12 +316,13 @@
     box-shadow: 1px 1px 3px lightgray;
 }
 .swrap2 input[type="text"] {
-    width: calc( 100% - 92px);
+    width: calc( 100% - 87px);
     padding: 6px;
     font-size: 1em;
     height: 14px;
     border: none;
     outline: none;
+    font-size:16px;
 }
 .swrap2 input[type="submit"] {
     padding: 3px 15px;
@@ -318,9 +330,10 @@
     position:absolute;
     right:0px;
     border: none;
-    height:20px;
+    height:26px;
     background-color: #f8f8f8;
     z-index: 99999;
+    width:76px;
 }
 .sopts {
     display: flex;￼
@@ -340,7 +353,9 @@
     background-color: lightgray;
     padding: 4px;
     box-shadow: 1px 1px 1px gray;
-    position:relative
+    position:relative;
+    text-align: center;
+    font-size: 14px;
 }
 
 .grpby .by.bydown {
@@ -394,12 +409,13 @@
 }
 
 .search-box input[type="submit"] {
-  padding: 10px 15px;
-  font-size: 1em;
+  padding: 10px 12px;
+  font-size: 16px;
   position:absolute;
   right:0px;  
   border: none;
   height:40px;
+  width: 76px;
   background-color: #f8f8f8;
   z-index: 99999;
 }
@@ -507,16 +523,6 @@ footer {
     color: #76769f;
     width: 100%;
     text-align: right;
-}
-.autocomplete-suggestions {
-    border-top: none !important;
-    transform: translate(-1px,-10px);
-    padding-top: 10px;
-    border: 1px solid #aaa;
-    box-shadow:none;
-}
-.autocomplete-suggestions.domAuto {
-    transform: translate(-1px,-8px);
 }
 
 .hov-inline {
