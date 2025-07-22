@@ -402,7 +402,7 @@
 .search-box input[type="text"] {
   width: calc( 100% - 100px);
   padding: 10px;
-  font-size: 1em;
+  font-size: 20px;
   height: 20px;
   border: none;
   outline: none;
