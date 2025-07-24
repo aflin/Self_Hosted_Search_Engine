@@ -2,9 +2,11 @@
 Browser extension and server saves visited pages to a personal search engine
 
 # Extension
-We have not yet published to safari stores. Chrome web store is pending.  Official Firefox extension is now available [here](https://addons.mozilla.org/en-US/firefox/addon/self-hosted-search-engine/).
+We have not yet published to safari store.
 
-For now, to use in Chrome, you will need to enable developer tools and use the [/extension/](extension/) directory in this repo to load the extension. We will update when the extension is on the chrome web store.
+The Chrome extension available [here](https://chromewebstore.google.com/detail/self-hosted-search-engine/djekcahnfnhijkpnhfcmcgldbkoiagjd).
+
+The Firefox extension is available [here](https://addons.mozilla.org/en-US/firefox/addon/self-hosted-search-engine/).
 
 # Server
 
