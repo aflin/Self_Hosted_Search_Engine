@@ -503,10 +503,17 @@ function dosearch(q,u,s) {
     if(s>90)
         sql.set({likeprows: s+100});
     //  image, url, last, hash, dom, title, abstract
-    var res=sql.exec(`select bintohex(Hash) hash, convert( Last , 'int' ) last, Dom dom, Url url, Image image, Title title,
-        stringformat('%mbH',?q,abstract(Text,0,'querymultiple',?q)) abstract
+    var res={rows:[]};
+    res.rowCount=sql.exec(`select bintohex(Hash) hash, convert( Last , 'int' ) last, Dom dom, Url url, Image image, Title title,
+        abstract(Text,0,'querymultiple',?q) abstract
         from ${u}_pages where Text likep ?q`,
-        {q:q}, {skipRows: s, includeCounts:true }
+        {q:q}, {skipRows: s, includeCounts:true },
+        function(r,i,c,counts) {
+            if(!res.countInfo)
+                res.countInfo=counts;
+            r.abstract = Sql.stringFormat('%mbH',q, r.abstract);
+            res.rows.push(r);
+        }
     );
 
     return res;
