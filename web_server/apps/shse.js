@@ -153,7 +153,10 @@ var urlutil = use.url;
 var sql = Sql.connect(`${serverConf.dataRoot}/shse/`, true);
 
 // for type ahead suggestions
-sql.set({"indexaccess":true});
+sql.set({
+    "indexaccess":true,
+    "useDerivations": "en"
+});
 
 function indexExists(idxname) {
     return !!sql.one(`select * from SYSINDEX where NAME='${idxname}'`);
@@ -341,7 +344,13 @@ var htmlHeadfmt=`<!DOCTYPE html>
   <link rel="stylesheet" href="/css/themes/current/jquery-ui.css">
   <link rel="stylesheet" href="/css/common.css">
   <link rel="stylesheet" href="/css/shse.css">
-  <script>var username="%s";</script>
+  <script>
+      var username="%s";
+      $(document).ready(function(){
+          if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1)
+              $('.autocomplete-suggestions').eq(0).css({'transform': "translate(-1px,-7px)"});
+      });
+  </script>
 `;
 
 var endHtmlHead="</head>";
@@ -491,7 +500,7 @@ function checkcred(req, require_admin) {
 
 function dosearch(q,u,s) {
     s= s ? parseInt(s) :0;
-
+/*
     sql.set({
         alEquivs: true,  //allow searches with '~myterm' for thesaurus lookup
         minwordlen: 6,
@@ -500,9 +509,15 @@ function dosearch(q,u,s) {
         // more sane list.  This might change in the future.
         suffixList: ["'",  "ies",  "s", 'ing', 'tion', 'sion', "able", "ible", 'ic', 'ed']
     })
+*/
+    sql.set({
+        "useDerivations": "en"
+    });
+
     if(s>90)
         sql.set({likeprows: s+100});
     //  image, url, last, hash, dom, title, abstract
+/*
     var res={rows:[]};
     res.rowCount=sql.exec(`select bintohex(Hash) hash, convert( Last , 'int' ) last, Dom dom, Url url, Image image, Title title,
         abstract(Text,0,'querymultiple',?q) abstract
@@ -514,6 +529,13 @@ function dosearch(q,u,s) {
             r.abstract = Sql.stringFormat('%mbH',q, r.abstract);
             res.rows.push(r);
         }
+    );
+*/
+    q=Sql.sandr('"=[^"\\space]+"=' , "~\\2 ",q);
+    var res=sql.exec(`select bintohex(Hash) hash, convert( Last , 'int' ) last, Dom dom, Url url, Image image, Title title,
+        stringformat('%mbH', ?q, abstract(Text,0,'querymultiple',?q)) abstract
+        from ${u}_pages where Text likep ?q`,
+        {q:q}, {skipRows: s, includeCounts:true }
     );
 
     return res;
@@ -1860,6 +1882,8 @@ if(!module || !module.exports) {
         "search.html":  searchpage,
         "login.html":   loginpage,
         "user.html":    userpage,
+        "index.html":   userpage,
+        "/":            userpage,
         "certs.html":   certpage,
         "admin.html":   adminpage
     }
