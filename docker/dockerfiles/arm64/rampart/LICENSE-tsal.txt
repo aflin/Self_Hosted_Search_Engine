@@ -1,0 +1,412 @@
+PLAIN ENGLISH SUMMARY of the Texis Source Available License 1.0 (TSAL-1.0)
+
+This summary is for convenience only.  The license text below, beginning at
+"BEGIN LICENSE", is the binding agreement.
+
+WHAT THIS COVERS
+
+  The Texis Library and its utilities as shipped with Rampart, in source and
+  binary form.  This includes the "rampart-sql" module (loaded with
+  require('rampart-sql')) and the "tsql", "addtable", "kdbfchk", "rex" and
+  "metamorph" executables.
+
+  The rest of Rampart, including the main "rampart" executable and the other
+  modules, is licensed under permissive open source licenses (mostly MIT).
+  See the LICENSE file.
+
+WHO MAY USE IT FREE OF CHARGE
+
+  * Anyone, for personal, hobby, study, research or testing purposes.
+
+  * Schools, instructors and students, for teaching, learning and research.
+    (Not for running the school itself, such as its websites or
+    administrative systems.)
+
+  * Charities and nongovernmental research, health, safety and
+    environmental organizations.
+
+  * Small businesses: a company (counting its affiliates) with less than
+    USD 1,000,000 in revenue last year, fewer than 100 people, and less
+    than USD 10,000,000 in total funding raised, for any purpose, including
+    commercial use.  No limit on CPUs or cores.
+
+  * Any company, once, for up to 60 days, to evaluate the software before
+    buying.  Not for production use.
+
+  Everyone else needs a Commercial License.  See https://rampart.dev/ .
+  This includes all government bodies (federal, state, local and
+  military, of any size), and schools and universities using Texis to
+  run their own operations.
+
+  If your small business grows past the limits, you have 90 days to get a
+  Commercial License.
+
+THE ONE THING FREE USERS MAY NOT DO
+
+  Sell Texis itself as a product.  That means you may not sell the software
+  (or a repackaged version of it) as a search engine, text retrieval or
+  database product, and you may not run a paid hosted service whose main
+  purpose is giving customers access to Texis search or database
+  functionality.
+
+  Offering such a product or service free of charge is fine, as long as
+  it is not supported by advertising or tied to a paid product.  An
+  individual or nonprofit may use advertising or fees to cover the costs
+  of running it.
+
+  You may include Texis in other software you distribute, free or paid,
+  as long as these terms go with it.  But whoever runs that software needs
+  their own license under these terms: a customer who does not qualify for
+  free use, such as a large company, needs a Commercial License to run your
+  product, even if you qualify.  If you run the product yourself and your
+  customers only use it over a network, only you need a license.
+
+  Building your own website, application or product that USES Texis for
+  its search or storage is fine, even if you sell that product.
+
+CHANGES TO THE TEXIS CODE
+
+  You may change the Texis code.  If you distribute your changed version, or
+  run it to serve people outside your company over a network, you must
+  publish the source code of your changes publicly, free of charge, under
+  this license.
+
+  Changes you only use inside your company do not have to be published.
+
+  Your own programs that use Texis (JavaScript using rampart-sql, SQL
+  statements, scripts calling the utilities, and so on) are NOT changes to
+  Texis and never have to be published.
+
+  When you publish changes, you give us permission to use them too,
+  including in the commercial version.
+
+--------------------------------------------------------------------------------
+
+BEGIN LICENSE
+
+The Texis Source Available License, Version 1.0
+
+Abbreviation: TSAL-1.0
+
+Licensor: Moat Crossing Systems, LLC
+
+Required Notice: Copyright Thunderstone Software LLC and Moat Crossing
+Systems, LLC.  Licensed by Moat Crossing Systems, LLC.
+
+1.  Acceptance
+
+    In order to get any license under these terms, you must agree to them as
+    both strict obligations and conditions to all your licenses.
+
+2.  Copyright License
+
+    The licensor grants you a copyright license for the software to do
+    everything you might do with the software that would otherwise infringe
+    the licensor's copyright in it for any permitted purpose.  However, you
+    may only distribute the software according to section 4 (Distribution
+    License) and make changes or new works based on the software according
+    to section 5 (Changes and Modifications).
+
+3.  Permitted Purposes
+
+    3.1  Personal Use.  Use for research, experiment, and testing for the
+         benefit of public knowledge, personal study, private
+         entertainment, hobby projects, amateur pursuits, or religious
+         observance, without any anticipated commercial application, is use
+         for a permitted purpose.
+
+    3.2  Noncommercial Organizations.  Use by any charitable organization,
+         or any nongovernmental research, public safety, health or
+         environmental protection organization (each a "Noncommercial
+         Organization") is use for a permitted purpose regardless of the
+         source of funding or obligations resulting from the funding.  A
+         Government Organization is not a Noncommercial Organization, even
+         if its purpose is research, public safety, health or
+         environmental protection.  Use by an educational institution to
+         run its own operations and infrastructure is governed by section
+         3.3, even if the institution is also a Noncommercial
+         Organization.
+
+    3.3  Educational Use.  Use by any school, college or university, or its
+         instructors and students, for teaching, learning and research is
+         use for a permitted purpose.  Use by such an institution to run its
+         own operations and infrastructure, such as its public websites,
+         library catalogs, or enrollment or administrative systems, is not
+         a permitted purpose under this section 3.3 or section 3.4.
+
+    3.4  Small Business.  Use of the software for the benefit of your
+         company is use for a permitted purpose if your company is not a
+         Government Organization and meets all of the following
+         conditions:
+
+         (a)  Your company has fewer than 100 total individuals working as
+              employees and independent contractors.
+
+         (b)  Your company had less than 1,000,000 USD (2026) total revenue
+              in the prior tax year.  Adjust this revenue threshold for
+              inflation according to the United States Bureau of Labor
+              Statistics' consumer price index for all urban consumers,
+              U.S. city average, for all items, not seasonally adjusted,
+              with 1982-1984=100 reference base.
+
+         (c)  Your company has received, in total, less than 10,000,000 USD
+              in equity and debt financing.
+
+         Each of these conditions is measured for your company as a whole,
+         including all of its affiliates.
+
+    3.5  Grace Period.  If your company stops meeting the conditions of
+         section 3.4, use that was permitted under section 3.4 remains
+         permitted for 90 days after your company stops meeting them, so
+         that you may obtain a Commercial License or stop using the
+         software.
+
+    3.6  Evaluation.  Use by any company solely to evaluate whether to
+         obtain a Commercial License, and not in production, is use for a
+         permitted purpose for 60 days from the company's first such use.
+         This period applies once per company, not once per version or per
+         individual.
+
+    3.7  Commercial License.  Any use that is not a permitted purpose under
+         sections 3.1 through 3.6 requires a separate written Commercial
+         License from the licensor.  This includes all use by or on behalf
+         of a Government Organization, other than evaluation under section
+         3.6, and use by an educational institution to run its own
+         operations and infrastructure.  A Commercial License may add to or
+         change these terms, and where it does, the Commercial License
+         controls.
+
+    3.8  Competing Use.  Notwithstanding sections 3.1 through 3.6, Competing
+         Use is not a permitted purpose under these terms.
+
+         "Competing Use" means making the software available to third
+         parties as a commercial product or service that:
+
+         (a)  is the software or a modified version of it, or a product
+              whose primary value is the software's own functionality,
+              offered as a standalone search engine, text retrieval
+              library or tool, or database product; or
+
+         (b)  is a hosted or managed service whose primary purpose is to
+              give third parties access to the software's full text search,
+              text retrieval or database functionality, such as a search or
+              database "as a service" offering.
+
+         The following are not Competing Use:
+
+         (i)   a website, application, appliance or other product in which
+               the software provides search, retrieval or data storage as
+               part of a larger application, where the search or database
+               functionality is not itself the primary thing being offered,
+               even if that product is sold or offered as a hosted service
+               and even if its users search their own data within it;
+
+         (ii)  consulting, integration, development or support services
+               you provide to others in connection with the software, as
+               long as each party using the software holds its own license
+               to do so; and
+
+         (iii) use of the software by the licensor's existing Commercial
+               License holders as allowed by their Commercial License; and
+
+         (iv)  making the software, or a product or service described in
+               (a) or (b), available free of charge, provided it is not a
+               commercial product or service.
+
+         A product or service is "commercial" if it is offered for a fee
+         or other compensation, is supported by advertising, or is
+         provided as part of or to promote a paid product or service.
+         Voluntary donations do not make a product or service commercial.
+         Advertising, fees or other income do not make a product or
+         service commercial if it is operated by an individual or a
+         Noncommercial Organization and that income is used only to cover
+         the reasonable costs of operating it.
+
+4.  Distribution License
+
+    The licensor grants you an additional copyright license to distribute
+    copies of the software, with or without changes made according to
+    section 5.  Anyone who receives the software from you receives their
+    licenses directly from the licensor under these terms.  You may not
+    offer or impose different license terms for the software.
+
+    Your licenses cover only your own use.  A recipient may use the
+    software only as permitted by the licenses they hold for it, under
+    these terms or a Commercial License.
+
+    You may distribute the software as part of a larger work that
+    includes your own software, and you may license your own software
+    under terms of your choice, including open source terms.  The
+    software itself, as included in the larger work, remains under these
+    terms, and you must make clear to recipients which parts of the larger
+    work these terms cover.
+
+5.  Changes and Modifications
+
+    5.1  License.  The licensor grants you an additional copyright license
+         to make changes and new works based on the software for any
+         permitted purpose.
+
+    5.2  Publication Requirement.  If you:
+
+         (a)  distribute a Modified Version; or
+
+         (b)  make a Modified Version available for third parties to
+              interact with over a network,
+
+         then you must make the complete source code of your Modifications
+         publicly available, at no charge and under these terms, at a
+         location accessible to the public without registration (such as a
+         public source code repository).  You must do so no later than 30
+         days after you first distribute it or make it available, and keep
+         it available for as long as you distribute it or make it available
+         and for at least one year after.  Each Modified Version must carry
+         a prominent notice stating that it has been modified and where the
+         source code of the Modifications may be obtained.
+
+    5.3  Internal Use.  Modifications used only by you or your company, and
+         not distributed or made available to third parties over a
+         network, do not need to be published.
+
+    5.4  Your Own Programs.  A program that interacts with the software only
+         through its documented interfaces is not a Modification and need
+         not be published.  Documented interfaces include the rampart-sql
+         JavaScript module, SQL statements and queries, command-line
+         invocation of the utilities, and the software's published
+         application programming interfaces.
+
+    5.5  License to the Licensor.  For any Modifications you publish or are
+         required to publish under section 5.2, you grant the licensor a
+         perpetual, worldwide, non-exclusive, royalty-free, irrevocable
+         license to use, copy, modify, distribute and sublicense those
+         Modifications, including under Commercial Licenses, together with
+         a license under any patent claims you can license that those
+         Modifications practice.
+
+    5.6  Commercial License Holders.  Section 5.2 applies to holders of a
+         Commercial License unless their Commercial License says otherwise.
+
+6.  Notices
+
+    You must ensure that anyone who gets a copy of any part of the software
+    from you also gets a copy of these terms or a URL for them, as well as
+    copies of any plain-text lines beginning with "Required Notice:" that
+    the licensor provided with the software.
+
+7.  Patent License
+
+    The licensor grants you a patent license for the software that covers
+    patent claims the licensor can license, or becomes able to license, that
+    you would infringe by using the software for a permitted purpose.
+
+8.  Patent Defense
+
+    If you make any written claim that the software infringes or contributes
+    to infringement of any patent, your patent license for the software
+    granted under these terms ends immediately.  If your company makes such
+    a claim, your patent license ends immediately for work on behalf of your
+    company.
+
+9.  Fair Use
+
+    You may have "fair use" rights for the software under the law.  These
+    terms do not limit them.
+
+10. No Other Rights
+
+    These terms do not allow you to sublicense or transfer any of your
+    licenses to anyone else, or prevent the licensor from granting licenses
+    to anyone else.  These terms do not imply any other licenses.
+
+11. Violations
+
+    The first time you are notified in writing that you have violated any of
+    these terms, or done anything with the software not covered by your
+    licenses, your licenses can nonetheless continue if you come into full
+    compliance with these terms, and take practical steps to correct past
+    violations, within 32 days of receiving notice.  Otherwise, all your
+    licenses end immediately.
+
+12. No Liability
+
+    AS FAR AS THE LAW ALLOWS, THE SOFTWARE COMES AS IS, WITHOUT ANY WARRANTY
+    OR CONDITION, AND THE LICENSOR WILL NOT BE LIABLE TO YOU FOR ANY DAMAGES
+    ARISING OUT OF THESE TERMS OR THE USE OR NATURE OF THE SOFTWARE, UNDER
+    ANY KIND OF LEGAL CLAIM.
+
+13. Third-Party Components
+
+    Parts of the software include third-party and open source components.
+    Your use of those components is governed by their own licenses, found
+    in their respective source directories and documentation.
+
+14. Governing Law
+
+    These terms are governed by the law of the State of Delaware, U.S.A.,
+    without reference to conflict of laws principles.  The United Nations
+    Convention on Contracts for the International Sale of Goods does not
+    apply.
+
+15. Earlier Versions
+
+    These terms replace the Rampart Source Available License ("RSAL")
+    previously used for the software.  Versions of the software released
+    with Rampart 0.7.4 and earlier were made available under the RSAL.  You
+    may continue to use those versions under the RSAL, or you may instead
+    choose to use them under these terms.
+
+DEFINITIONS
+
+    The "licensor" is Moat Crossing Systems, LLC.
+
+    The "software" is the Texis Library and accompanying utilities, in
+    source code, binary and compiled form, that the licensor makes available
+    under these terms, including the "rampart-sql" module and the "tsql",
+    "addtable", "kdbfchk", "rex" and "metamorph" executables.
+
+    "You" refers to the individual or entity agreeing to these terms.
+
+    "Your company" is any legal entity, sole proprietorship, or other kind
+    of organization that you work for, plus all organizations that have
+    control over, are under the control of, or are under common control with
+    that organization.  These are its "affiliates."
+
+    "Control" means ownership of substantially all the assets of an entity,
+    or the power to direct its management and policies by vote, contract, or
+    otherwise.  Control can be direct or indirect.
+
+    A "Government Organization" is any national, federal, state,
+    provincial, regional, county, city, municipal or other local
+    government, and any agency, department, authority, court, legislature
+    or instrumentality of one, including military and armed forces,
+    intelligence agencies, police and other law enforcement, and any
+    entity owned or controlled by one.  A public school, college or
+    university is not a Government Organization when its use is a
+    permitted purpose under section 3.3.
+
+    "Third parties" are anyone other than you and your company.  Employees
+    and independent contractors acting on behalf of your company are not
+    third parties.
+
+    A "Modification" is any change to the source code of the software, or
+    any new work that contains or is derived from a substantial portion of
+    the software's source code.  A "Modified Version" is the software with
+    Modifications.
+
+    A "Commercial License" is a written license agreement for the software
+    purchased from the licensor.
+
+    "Your licenses" are all the licenses granted to you for the software
+    under these terms.
+
+    "Use" means anything you do with the software requiring one of your
+    licenses.
+
+ACKNOWLEDGEMENT
+
+    Parts of these terms are adapted from the PolyForm Small Business
+    License 1.0.0, the PolyForm Noncommercial License 1.0.0
+    (https://polyformproject.org/) and the Functional Source License 1.1
+    (https://fsl.software/).
+
+END LICENSE

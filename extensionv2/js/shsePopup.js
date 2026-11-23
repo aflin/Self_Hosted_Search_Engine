@@ -600,7 +600,6 @@ $(document).ready(function(){
 
             serv.focusout(function(){
                 settings.server=servval=serv.val().replace(/\/.*/,'');
-console.log(servval);
                 if(!settings.noAddShseServer){ //do this only once
                     addrow(null, settings.server, 1);
                     settings.noAddShseServer=true;

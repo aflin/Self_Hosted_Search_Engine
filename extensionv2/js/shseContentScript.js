@@ -3,6 +3,35 @@ var hardcode={
 "--usbanks" : {"chase.com":2,"bankofamerica.com":2,"wellsfargo.com":2,"citi.com":2,"usbank.com":2,"pnc.com":2,"td.com":2,"capitalone.com":2,"bnymellon.com":2,"statestreetbank.com":2,"bbt.com":2,"schwabbank.com":2,"suntrust.com":2,"hsbc.com":2,"marcus.com":2,"ally.com":2,"53.com":2,"morganstanley.com":2,"key.com":2,"northerntrust.com":2,"citizensbank.com":2,"unionbank.com":2,"regions.com":2,"mtb.com":2,"americanexpress.com":2,"bmoharris.com":2,"huntington.com":2,"discover.com":2,"firstrepublic.com":2,"navyfederal.org":2,"bankofthewest.com":2,"bbvacompass.com":2,"synchronybank.com":2,"usaa.com":2,"santanderbank.com":2,"comerica.com":2,"morganstanley.com":2,"zionsbank.com":2,"svb.com":2,"ubs.com":2,"cnb.com":2,"mynycb.com":2,"signatureny.com":2,"peoples.com":2,"db.com":2,"bankoncit.com":2,"firsttennessee.com":2,"ncsecu.org":2,"eastwestbank.com":2,"firstcitizens.com":2,"tiaabank.com":2,"bankofoklahoma.com":2,"associatedbank.com":2,"banking.barclaysus.com":2,"fnb-online.com":2,"synovus.com":2,"snb.com":2,"bankunited.com":2,"frostbank.com":2,"valley.com":2,"iberiabank.com":2,"hancockwhitney.com":2,"texascapitalbank.com":2,"websteronline.com":2,"umpquabank.com":2,"cibc.com":2,"myinvestorsbank.com":2,"pacificwesternbank.com":2,"commercebank.com":2,"salliemae.com":2,"pnfp.com":2,"penfed.org":2,"tcfbank.com":2,"raymondjamesbank.com":2,"prosperitybankusa.com":2,"ozk.com":2,"westernalliancebank.com":2,"fhb.com":2,"umb.com":2,"chemicalbank.com":2,"fnbo.com":2,"mbfinancial.com":2,"bankwithunited.com":2,"arvest.com":2,"becu.org":2,"efirstbank.com":2,"flagstar.com":2,"oldnational.com":2,"bancorpsouth.com":2,"boh.com":2,"statefarm.com":2,"cathaybank.com":2,"simmonsbank.com":2,"stifelbank.com":2,"washingtonfederal.com":2,"midfirst.com":2,"schoolsfirstfcu.org":2,"my100bank.com":2,"bankofhope.com":2,"firstmidwest.com":2,"stockplanconnect.com":2,"morganstanleyclientserv.com":2,"ameritrade.com":2,"etrade.com":2,"schwab.com":2,"fidelity.com":2}
 };
 var settings={}
+
+/* DEBUGGING for the facebook post indexer.  Set to false to silence.
+   Everything is logged to the page's console (F12 on facebook.com) with
+   the prefix "[shse fb]", so it can be picked out with the console filter. */
+var shse_fbdebug=false;
+function fbdbg() {
+    if(!shse_fbdebug) return;
+    var a=Array.prototype.slice.call(arguments);
+    a.unshift('[shse fb]');
+    console.log.apply(console, a);
+}
+/* the same for the bluesky post indexer, prefix "[shse bsky]" */
+function bsdbg() {
+    if(!shse_fbdebug) return;
+    var a=Array.prototype.slice.call(arguments);
+    a.unshift('[shse bsky]');
+    console.log.apply(console, a);
+}
+/* a short description of an element for the log */
+function fbdesc(el) {
+    if(!el) return '(none)';
+    if(el.jquery) el=el[0];
+    if(!el) return '(none)';
+    var t=(el.innerText||'').replace(/\s+/g,' ').substring(0,60);
+    return '<'+el.tagName.toLowerCase()+
+           (el.getAttribute('role')?' role='+el.getAttribute('role'):'')+
+           (el.getAttribute('aria-label')?' aria-label="'+el.getAttribute('aria-label')+'"':'')+
+           '> children='+el.children.length+' text="'+t+'"';
+}
 var server, sstore, sdelete, scheck;
 //get subtitles url from background.js
 var ytsubs;
@@ -98,7 +127,8 @@ function start(f){
                 }
 
                 f();// web scraping function entry point
-            } //else silent exit ??
+            } else if(/facebook\.com/i.test(window.location.hostname))
+                fbdbg('STOPPED: no server is configured in the plugin settings');
         }
         ,
         /*error function */
@@ -531,7 +561,6 @@ function savepage (callback){
                 let id=url.match(/\?.*v=([^&]+)/);
                 if (id.length>1) sobj.img='https://i.ytimg.com/vi/' + id[1] + '/hqdefault.jpg';
             //}
-console.log("ytube", settings.ytube)
             if(settings.ytube) {
                 // toggle the subtitles button if not on.  Triggers loading of subtitles.
                 var stb=$('.ytp-subtitles-button');
@@ -588,7 +617,15 @@ function get_page_info(){
     var x=0;
     var ssite=site;
 
-    if (!user || settings.disabled || document.contentType != 'text/html') return;
+    if (!user || settings.disabled || document.contentType != 'text/html') {
+        if(/bsky\.app/i.test(url))
+            bsdbg('STOPPED before doing anything: user =', user, '; plugin disabled (ON/OFF button) =', !!settings.disabled,
+                  '; contentType =', document.contentType);
+        if(/facebook\.com/i.test(url))
+            fbdbg('STOPPED before doing anything: user =', user, '; plugin disabled (ON/OFF button) =', !!settings.disabled,
+                  '; contentType =', document.contentType);
+        return;
+    }
 
     /* get each subdomain (www.xyz.com, xyz.com, com) and check against excludes */ 
     while (x>-1) {
@@ -638,7 +675,8 @@ function get_page_info(){
     // an object for facebook stuff
     settings.fb={};
     // the action "..." icon on each post
-    settings.fb.action_selector='div[aria-label="Actions for this post"]';
+    // (the label is now "Actions for this post by <name>", so match the start only)
+    settings.fb.action_selector='div[aria-label^="Actions for this post"]';
     // how far up to go to get to whole post
     settings.fb.nparents_action_to_post = 5;    
     // a link to individual post page selector
@@ -651,9 +689,118 @@ function get_page_info(){
     var fb_focus_event = new Event("focusin", {bubbles:true } );    
     var fb_pointer_event = new Event("pointerover", {bubbles:true } );    
     var fb_pointerOut_event = new Event("pointerout", {bubbles:true } );    
+    var fb_mouseOver_event = new MouseEvent("mouseover", {bubbles:true, cancelable:true, view:window} );
+    var fb_mouseOut_event = new MouseEvent("mouseout", {bubbles:true, cancelable:true, view:window} );
+
+    // Before it is hovered, the date link of a post has only a placeholder
+    // href such as "?__cft__[0]=...".  Hovering makes facebook write the real url.
+    function fb_placeholder(href) {
+        return !href || /^[?#]/.test(href);
+    }
+
+    // drop facebook's per-view tracking parameters so that the same post
+    // always gets the same url (and so the same entry in the search engine)
+    function fb_cleanurl(href) {
+        try {
+            var u = new URL(href, document.location.href), del=[];
+            u.searchParams.forEach(function(v,k){
+                if(/^__/.test(k) || /^hoisted_/.test(k)) del.push(k);
+            });
+            del.forEach(function(k){ u.searchParams.delete(k); });
+            u.hash='';
+            return u.href;
+        } catch(e) {
+            return href;
+        }
+    }
+
+    // Facebook's visible date is relative ("a day ago", "3h", "Yesterday at 5:02 PM").
+    // That is useless once stored, so convert it to an approximate calendar date.
+    // Text that already holds a real date is returned unchanged.
+    function fb_absdate(txt) {
+        var t=(txt||'').trim(), now=new Date(), d=null, m, n, unit;
+        var ms={s:1000, m:60000, h:3600000, d:86400000, w:604800000};
+        if(!t.length) return '';
+        if(/^just now$/i.test(t)) d=now;
+        else if((m=/^(an?|\d+)\s*(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|wks?|w)\b(\s+ago)?$/i.exec(t))) {
+            n = /^an?$/i.test(m[1]) ? 1 : parseInt(m[1]);
+            unit = m[2].toLowerCase();
+            unit = /^s/.test(unit) ? 's' : /^mi|^m$/.test(unit) ? 'm' : /^h/.test(unit) ? 'h' : /^d/.test(unit) ? 'd' : 'w';
+            d = new Date(now.getTime() - n*ms[unit]);
+        }
+        else if(/^yesterday/i.test(t)) d = new Date(now.getTime() - ms.d);
+        if(!d) return t;   // "November 3 at 9:15 AM", "Wednesday, July 16, 2025 at 5:02 AM", ...
+        return d.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    }
+
+    // If the simulated hover raised facebook's date tooltip, it holds the exact date.
+    function fb_tooltipdate() {
+        var found='';
+        $('[role=tooltip]').each(function(){
+            var x=$(this).text().trim();
+            if(!found && x.length < 60 && /\b(19|20)\d\d\b/.test(x) && /\d:\d\d/.test(x)) found=x;
+        });
+        return found;
+    }
+
+    // The date is drawn as an svg so it cannot be read off the page.  The
+    // readable text is in the element named by aria-labelledby inside the link
+    // (formerly aria-describedby on the link's parent).
+    function fb_date(a) {
+        var ids=[], txt='';
+        a.find('[aria-labelledby]').addBack('[aria-labelledby]').each(function(){ ids.push(this.getAttribute('aria-labelledby')); });
+        a.find('[aria-describedby]').addBack('[aria-describedby]').each(function(){ ids.push(this.getAttribute('aria-describedby')); });
+        if(a.parent().attr('aria-describedby')) ids.push(a.parent().attr('aria-describedby'));
+        ids.join(' ').split(/\s+/).forEach(function(id){
+            var el = id ? document.getElementById(id) : null;
+            if(!txt && el) txt=(el.textContent||'').trim();
+        });
+        if(!txt && a.attr('aria-label')) txt=a.attr('aria-label');
+        return {text:txt, ids:ids};
+    }
+
+    var fb_scan=0, fb_lastcount=-1, fb_postno=0;
+
+    // Posts are hovered ONE AT A TIME.  The exact date is read from facebook's
+    // hover tooltip, and with several posts hovered at once there would be no
+    // telling which tooltip belongs to which post.
+    var fb_queue=[], fb_busy=false;
+    function fb_next() {
+        if(fb_busy || !fb_queue.length) return;
+        fb_busy=true;
+        var job=fb_queue.shift();
+        job(function(){
+            fb_busy=false;
+            setTimeout(fb_next, 250);   // let the previous tooltip go away
+        });
+    }
 
     function getfb(ret) {
         var actions = $(settings.fb.action_selector);
+        var fresh = actions.not('.indexed').length;
+
+        fb_scan++;
+        // STEP 1: find the "..." button of each post.  Logged when something changes.
+        if(fresh || actions.length != fb_lastcount) {
+            fbdbg('scan #'+fb_scan+': STEP 1 selector', settings.fb.action_selector,
+                  'matched', actions.length, 'elements,', fresh, 'not yet processed');
+            fb_lastcount=actions.length;
+        }
+        if(!actions.length && (fb_scan==1 || fb_scan%12==0)) {
+            // nothing matched: show what IS on the page, to find the new selector
+            var labels={};
+            $('[aria-label]').each(function(){
+                var l=this.getAttribute('aria-label');
+                if(/post|action|option|more/i.test(l)) labels[l]=(labels[l]||0)+1;
+            });
+            fbdbg('STEP 1 FAILED: no post action buttons found. aria-labels on this page mentioning post/action/option/more:', labels);
+            fbdbg('  for reference: [role=article] count =', $('[role=article]').length,
+                  ', [role=feed] count =', $('[role=feed]').length,
+                  ', [aria-posinset] count =', $('[aria-posinset]').length);
+        }
+
+        setTimeout(fb_next, 0);   // work through whatever this scan queues
+
         actions.each(function(){
             var t=$(this),
                 post=t, i=0, atag, url, img;
@@ -664,42 +811,95 @@ function get_page_info(){
             
             t.addClass("indexed");
 
+            var pn=++fb_postno;
+
             // in case of ad blocker
-            if(!t.is(':visible'))
+            if(!t.is(':visible')) {
+                fbdbg('post', pn, 'SKIPPED: action button is not visible', this);
                 return;
+            }
 
             // traverse parents until we get all the text in the post.
             for (i=0;i<settings.fb.nparents_action_to_post;i++)
                 post=post.parent();
 
+            // STEP 2: the container reached by going up N parents from the button
+            fbdbg('post', pn, 'STEP 2 container after', settings.fb.nparents_action_to_post, 'parents:', fbdesc(post), post[0]);
+
             // the atag element that will contain post url after triggered with focusin
             // trigger to do the facebook magic.
             atag = post.find(settings.fb.postpage_link_selector);
 
-            // if not a post, skip
-            if(!atag.length)
-                return;
+            // of those, the date link is the one whose href is still a placeholder
+            var nmatched = atag.length;
+            var placeholders = atag.filter(function(){ return fb_placeholder(this.getAttribute('href')); });
+            if(placeholders.length) atag = placeholders.eq(0);
+            else atag = atag.eq(0);
 
-            // trigger the focusin event and facebook callbacks that will populate the href of atag
-            atag[0].dispatchEvent(fb_focus_event);
-            atag[0].dispatchEvent(fb_pointer_event);
-            // wait a time before trying to collect it.
-            (function(a,p){
+            // STEP 3: the link that will hold the post url
+            fbdbg('post', pn, 'STEP 3 selector', settings.fb.postpage_link_selector, 'matched', nmatched, 'links in container,',
+                  placeholders.length, 'with a placeholder href; using href:', atag.length ? atag.attr('href') : '(none)');
+
+            // if not a post, skip
+            if(!atag.length) {
+                var alla=post.find('a');
+                fbdbg('post', pn, 'STEP 3 FAILED: no link matched. The container holds', alla.length, 'links in all:',
+                      alla.slice(0,8).map(function(){ return (this.getAttribute('target')||'no-target')+' role='+this.getAttribute('role')+' '+(this.getAttribute('href')||'').substring(0,70); }).get());
+                return;
+            }
+
+            (function(a,p,pn,labelname){
+              fb_queue.push(function(done){
+                // a post scrolled far out of view may have been removed from the page by now
+                if(!document.contains(a[0])) {
+                    fbdbg('post', pn, 'SKIPPED: the post was removed from the page before its turn came');
+                    return done();
+                }
+                // trigger the hover events and facebook callbacks that will populate the href of atag
+                a[0].dispatchEvent(fb_pointer_event);
+                a[0].dispatchEvent(fb_mouseOver_event);
+                a[0].dispatchEvent(fb_focus_event);
+                // wait a time before trying to collect it.
                 setTimeout(function(){
                     var image, images = p.find('img');
                     var poster = p.find('strong').eq(0).text();
+                    // the button's label names the poster: "Actions for this post by <name>"
+                    if(!poster || labelname) {
+                        fbdbg('post', pn, 'poster: first <strong> = "'+poster+'", name in button label = "'+labelname+'"');
+                        if(labelname) poster = labelname;
+                    }
                     var contentd = p.children().eq(2), content;
-                    // get the id of element containing date description
-                    var id=a.parent().attr('aria-describedby');
+                    var rawhref = a.attr('href');
+                    var posturl = fb_cleanurl(rawhref);
                     // get the date
-                    var datetxt=$('#'+id).text();
-                    // if no date, probably not a post.
-                    if(datetxt=='')
-                        return;
-                    // turn off
-                    a[0].dispatchEvent(fb_pointerOut_event);
+                    var dinfo = fb_date(a), datetxt = dinfo.text;
 
+                    // read the tooltip while this post is still the one being hovered
+                    var tipdate = fb_tooltipdate();
+
+                    // STEP 4: after the events, the link should have a real post url
+                    fbdbg('post', pn, 'STEP 4 href after simulated hover + 750ms:', rawhref, '; cleaned url:', posturl);
+                    // turn off, and let the next post have its turn
+                    a[0].dispatchEvent(fb_pointerOut_event);
+                    a[0].dispatchEvent(fb_mouseOut_event);
+                    done();
+                    if(fb_placeholder(rawhref)) {
+                        fbdbg('post', pn, 'STEP 4 FAILED: facebook did not fill in the url (the simulated hover had no effect). Giving up on this post.', a[0]);
+                        return;
+                    }
+                    // STEP 5: the date text
+                    var rawdate = datetxt;
+                    datetxt = tipdate ? tipdate : fb_absdate(rawdate);
+                    fbdbg('post', pn, 'STEP 5 date: ids referenced by the link =', dinfo.ids, '; text there = "'+rawdate+'"',
+                          '; exact date from tooltip = "'+tipdate+'"', '; date used = "'+datetxt+'"');
+                    if(datetxt=='') {
+                        fbdbg('post', pn, 'STEP 5 note: no date text found; saving the post without a date.',
+                              'tooltips now on page:', $('[role=tooltip]').map(function(){return $(this).text().substring(0,60);}).get(),
+                              '; link html:', a[0].outerHTML.replace(/ class="[^"]*"/g,'').substring(0,600));
+                    }
+                    var fbtitle = "facebook: " + poster + (datetxt ? " on " + datetxt : "");
                     // find the content text, skip the junk.
+                    var cmethod='pre-wrap elements';
                     contentd.find(settings.fb.content_selector).each(function(){
                         var t=$(this);
                         if(t.css('white-space')=='pre-wrap') {
@@ -707,53 +907,98 @@ function get_page_info(){
                             else content = content + " " + t.text();
                         }
                     });
+                    // facebook no longer marks post text with white-space:pre-wrap.
+                    // Take the innermost [dir=auto] elements (so nested ones are not
+                    // counted twice), and failing that the whole content block.
+                    if(!content) {
+                        cmethod='innermost '+settings.fb.content_selector+' elements';
+                        var parts=[];
+                        contentd.find(settings.fb.content_selector).each(function(){
+                            if($(this).find(settings.fb.content_selector).length) return;
+                            var x=(this.innerText||'').replace(/\s+/g,' ').trim();
+                            if(x.length && parts.indexOf(x)==-1) parts.push(x);
+                        });
+                        if(parts.length) content=parts.join("\n");
+                    }
+                    if(!content && contentd.length) {
+                        cmethod='whole content block';
+                        content=(contentd[0].innerText||'').replace(/[ \t]+/g,' ').trim();
+                    }
+                    // STEP 6: poster and text
+                    fbdbg('post', pn, 'STEP 6 poster (first <strong>) = "'+poster+'";',
+                          'content container (3rd child):', fbdesc(contentd), ';',
+                          settings.fb.content_selector, 'elements in it:', contentd.find(settings.fb.content_selector).length,
+                          '; text collected via', cmethod+':', content ? content.length+' chars "'+content.substring(0,200)+'"' : 'NONE (content is undefined)');
+                    if(!content) {
+                        fbdbg('post', pn, 'STEP 6 note: no text found. Children of the post container:',
+                              p.children().map(function(i){ return i+': '+fbdesc(this); }).get());
+                    }
+
                     // find an appropriate image.
-                    images.each(function(){
-                        var im = $(this);
-                        var src = im.attr('src');
-                        //grab the first image that comes from user fb image servers
-                        if (src && settings.fb.mainImage_regex.test(src)) {
-                            image=im;
-                            return false;
-                        }
+                    fbdbg('post', pn, 'images in the post container:', images.map(function(){
+                        var src=this.getAttribute('src')||'';
+                        return (this.naturalWidth||this.width)+'x'+(this.naturalHeight||this.height)+' '+
+                               (/^data:/.test(src) ? 'data:…' : src.replace(/^https?:\/\//,'').replace(/[?].*$/,'').substring(0,60));
+                    }).get());
+                    // first look only inside the content block, then anywhere in the post
+                    [contentd.find('img'), images].forEach(function(set){
+                        if(image) return;
+                        set.each(function(){
+                            var im = $(this);
+                            var src = im.attr('src');
+                            //grab the first image that comes from user fb image servers,
+                            //skipping avatars, emoji and reaction icons
+                            if (src && settings.fb.mainImage_regex.test(src) && (this.naturalWidth||this.width) >= 100) {
+                                image=im;
+                                return false;
+                            }
+                        });
                     });
+
+                    // STEP 7: send to the server
+                    fbdbg('post', pn, 'STEP 7 sending to', sstore, '; url =', posturl, '; title =', fbtitle,
+                          '; image:', image ? image.attr('src').substring(0,80) : 'none', '(of', images.length, 'img elements)');
+                    var fbdone=function(ok, data){ fbdbg('post', pn, 'STEP 7 server reply:', ok ? 'OK' : 'FAILED', data); };
 
                     if(image) {
                         //console.log("Got image");
                         imgtob64(image.attr('src'),150,150, function (imgurl) {
                             postdata(sstore, {
                                     history: true,
-                                    title:"facebook: " + poster+ " on " + datetxt,
+                                    title: fbtitle,
                                     //user:settings.user,
-                                    furl:a.eq(0).attr('href'),
+                                    furl: posturl,
                                     //dom: 'facebook.com',
                                     img: imgurl,
-                                    text: "facebook: " + poster+ " on " + datetxt + " " + content
+                                    text: fbtitle + " " + (content || "")
                                 },
                                 {
                                     success: "Page successfully saved",
                                     fail:    "Failed to save page to server"
-                                }
+                                },
+                                fbdone
                             );
                         });
                     } else {
                         postdata(sstore, {
                                 history: true,
-                                title:"facebook: " + poster+ " on " + datetxt,
+                                title: fbtitle,
                                 //user:settings.user,
-                                furl:a.eq(0).attr('href'),
+                                furl: posturl,
                                 //dom: 'facebook.com',
-                                text: "facebook: " + poster+ " on " + datetxt + " " + content
+                                text: fbtitle + " " + (content || "")
                             },
                             {
                                 success: "Page successfully saved",
                                 fail:    "Failed to save page to server"
-                            }
+                            },
+                            fbdone
                         );
                     }
                     
                 },750);
-            })(atag,post);
+              });
+            })(atag,post,pn, (t.attr('aria-label')||'').replace(/^Actions for this post( by )?/,'').trim());
 
         });
 
@@ -836,45 +1081,155 @@ function get_page_info(){
     settings.bs.first_selector='div[data-testid="followingFeedPage-feed-flatlist"]';
     // image server substring
     settings.bs.mainImage_selector = 'div[data-expoimage="true"]';
+    // each post in a feed is marked data-testid="feedItem-by-<handle>"
+    settings.bs.post_selector = '[data-testid^="feedItem-by-"]';
+
+    var bs_scan=0, bs_lastcount=-1, bs_postno=0;
+    // Posts already sent, by url.  The feed is a virtual list: bluesky reuses the
+    // same page elements for different posts as you scroll, so an element cannot
+    // be marked as done -- only a post url can.
+    var bs_seen={};
+    var bs_fails={};   // failed sends per url, to limit retries
+
+    // the url of the post an element holds: its first link containing /post/
+    function bs_posturl(t) {
+        var u;
+        t.find('a').each(function(){
+            if(/\/post\//.test(this.href)) {
+                u=this.href.replace(/[?#].*$/,'');
+                return false;
+            }
+        });
+        return u;
+    }
 
     function getbs(ret) {
-        var posts = $(settings.bs.first_selector)
-                    .children('div').children('div').children('div')
+        var feed = $(settings.bs.first_selector);
+        var how = settings.bs.post_selector + ' anywhere on the page';
+        // Look on the whole page, not just inside the "Following" container: the
+        // home page has one container per feed tab (Discover, Following, ...) and
+        // only the tab being shown holds posts.  Posts in tabs that are not shown
+        // are skipped below because they are not visible.
+        var posts = $(settings.bs.post_selector);
+        if(!posts.length) {
+            // the layout this was first written for: posts three levels below the feed container
+            how = 'three levels below the feed container';
+            posts = feed.children('div').children('div').children('div')
                     .filter(function(){return $(this).children().length});
+        }
+        var fresh = posts.filter(function(){
+            var u=bs_posturl($(this));
+            return u && !bs_seen[u];
+        }).length;
+
+        bs_scan++;
+        // STEP 1: the feed container, and the posts three levels below it.  Logged when something changes.
+        if(fresh || posts.length != bs_lastcount) {
+            bsdbg('scan #'+bs_scan+': STEP 1 posts found via', how+':', posts.length, ',', fresh, 'not yet sent',
+                  '; feed containers on page:', $('[data-testid$="-feed-flatlist"]').map(function(){
+                      return this.getAttribute('data-testid')+' ('+$(this).find(settings.bs.post_selector).length+' posts, '+($(this).is(':visible')?'visible':'hidden')+')';
+                  }).get());
+            bs_lastcount=posts.length;
+        }
+        if(!posts.length && (bs_scan==1 || bs_scan%12==0)) {
+            // nothing found: show what IS on the page, to find the new selectors
+            var ids={};
+            $('[data-testid]').each(function(){
+                var id=this.getAttribute('data-testid').replace(/-by-.*$/,'-by-…').replace(/[0-9a-z]{13,}/g,'…');
+                if(/feed|post|item/i.test(id)) ids[id]=(ids[id]||0)+1;
+            });
+            bsdbg('STEP 1 FAILED:', feed.length ? 'the feed container was found but no posts under it.' : 'the feed container was not found.',
+                  'data-testid values on this page mentioning feed/post/item:', ids);
+            if(feed.length) {
+                var lv=feed, chain=[];
+                for(var d=0; d<5 && lv.length; d++) { chain.push('level '+d+': '+lv.length+' elements, first: '+fbdesc(lv.eq(0))); lv=lv.children('div'); }
+                bsdbg('  structure below the feed container:', chain);
+            }
+        }
+
         posts.each(function(){
             var t=$(this),
                 post, pdate=(new Date).toString(), poster="Bluesky Post", url, img;
             
-            //if already processed, skip.
-            if(t.hasClass("indexed"))
-                return;
-            
-            t.addClass("indexed");
+            url = bs_posturl(t);
 
-            // in case of ad blocker
+            //if already processed, skip.  An element with no post url yet
+            //(still loading, or not a post) is looked at again on the next scan.
+            if(!url || bs_seen[url])
+                return;
+
+            // not on screen yet (or hidden by an ad blocker): try again next scan
             if(!t.is(':visible'))
                 return;
 
-            post = t[0].innerText;
+            bs_seen[url]=true;
 
+            var pn=++bs_postno;
+
+            // The words of the post are in data-testid="postText" (one for the post,
+            // another for a quoted post inside it).  The element's whole innerText
+            // also holds the name, handle, "1h" and the reply/repost/like counts,
+            // so it is only the fallback, e.g. for a post that is just a picture.
+            var ptexts=[], textfrom='postText';
+            t.find('[data-testid="postText"]').each(function(){
+                var x=(this.innerText||'').trim();
+                if(x.length) ptexts.push(x);
+            });
+            // descriptions people wrote for their pictures are worth searching too
+            t.find('img[alt]').each(function(){
+                var x=(this.getAttribute('alt')||'').trim();
+                if(x.length && ptexts.indexOf(x)==-1) ptexts.push(x);
+            });
+            post = ptexts.join("\n");
+            if(!post.length) {
+                textfrom='whole element (no postText found)';
+                post = t[0].innerText;
+            }
+
+            // STEP 2: the post element
+            bsdbg('post', pn, 'STEP 2 element:', fbdesc(t), '; links in it:', t.find('a').length, this);
+
+            // the date: the tooltip (or failing that the label) of the link to the post itself
+            var plink = t.find('a').filter(function(){ return /\/post\//.test(this.href); });
+            pdate = t.find('a[data-tooltip]').eq(0).attr('data-tooltip');
+            if(!pdate) pdate = plink.filter('[data-tooltip]').eq(0).attr('data-tooltip');
+            if(!pdate) pdate = plink.filter('[aria-label]').eq(0).attr('aria-label');
+
+            // the poster: the author's handle is in the post's own url and in its data-testid.
+            // Use the display name from the first link to THAT profile, so that a
+            // "Reposted by ..." line above the post is not mistaken for the author.
+            var handle = (/\/profile\/([^\/]+)\/post\//.exec(url) || [])[1] || '';
             t.find('a').each(function(){
-                if(/\/post\//.test(this.href)) {
-                    url=this.href;
+                var txt=(this.text||'').replace(/\s+/g,' ').trim();
+                if(handle && this.href.indexOf('/profile/'+handle) > -1 && !/\/post\//.test(this.href) && txt.length) {
+                    poster=txt;
                     return false;
                 }
             });
+            if(poster=="Bluesky Post" && handle) poster='@'+handle;
 
-            pdate=t.find('a[data-tooltip]').eq(0).attr('data-tooltip');
+            // the first picture that is not somebody's avatar
+            img=t.find(settings.bs.mainImage_selector).not('[data-testid="userAvatarImage"]')
+                 .find('img').filter(function(){ return !/\/avatar/.test(this.getAttribute('src')||''); })
+                 .eq(0).attr('src');
+            // without a date, say nothing rather than "on undefined"
+            var title = "bluesky: " + poster + (pdate ? " on " + pdate : "");
 
-            t.find('a').each(function(){
-                if(/\/profile\//.test(this.href)) {
-                    poster=this.text;
-                    return false;
-                }
-            });
-
-            img=t.find('div[data-expoimage="true"]').find('img').eq(0).attr('src');
-            var title = "bluesky: " + poster+" on "+pdate;
+            // STEP 3: the post's own url (first link containing /post/)
+            bsdbg('post', pn, 'STEP 3 post url:', url ? url : 'NOT FOUND.  hrefs in this element: ',
+                  url ? '' : t.find('a').slice(0,8).map(function(){ return (this.getAttribute('href')||'').substring(0,70); }).get());
+            // STEP 4: date (data-tooltip of the first link that has one) and poster (first /profile/ link)
+            bsdbg('post', pn, 'STEP 4 date = "'+pdate+'"', '(links with data-tooltip: '+t.find('a[data-tooltip]').length+')',
+                  '; poster = "'+poster+'"', '; author handle from url = "'+handle+'"', '; data-testid =', t.attr('data-testid'));
+            if(!pdate)
+                bsdbg('post', pn, 'STEP 4 note: no date found. Attributes on the post link:',
+                      t.find('a').filter(function(){return /\/post\//.test(this.href);}).slice(0,2).map(function(){
+                          return Array.prototype.map.call(this.attributes, function(x){ return x.name=='class'||x.name=='style' ? '' : x.name+'="'+String(x.value).substring(0,60)+'"'; }).filter(function(x){return x;}).join(' ');
+                      }).get());
+            // STEP 5: text and image
+            bsdbg('post', pn, 'STEP 5 text from', textfrom+':', post ? post.length+' chars "'+post.replace(/\s+/g,' ').substring(0,160)+'"' : 'NONE',
+                  '; image:', img ? img.substring(0,80) : 'none',
+                  '(', settings.bs.mainImage_selector, 'matched', t.find(settings.bs.mainImage_selector).length, ', img elements in post:', t.find('img').length, ')');
             var sobj = {
                 history: true,
                 furl:  url, 
@@ -883,10 +1238,27 @@ function get_page_info(){
                 img:   img
             }
 
-            if(url && post && post.length)
-                savecb(sobj);
-            else
+            if(url && post && post.length) {
+                // STEP 6: send to the server
+                bsdbg('post', pn, 'STEP 6 sending to', sstore, '; url =', url, '; title =', title);
+                (function(u){
+                    savecb(sobj, function(ok, data){
+                        bsdbg('post', pn, 'STEP 6 server reply:', ok ? 'OK' : 'FAILED', data);
+                        // a post the server did not take is offered again on a later
+                        // scan, twice at most, rather than being lost for this page
+                        if(!ok) {
+                            bs_fails[u]=(bs_fails[u]||0)+1;
+                            if(bs_fails[u] <= 2) {
+                                delete bs_seen[u];
+                                bsdbg('post', pn, 'will retry (attempt', bs_fails[u]+1, 'of 3) on the next scan');
+                            }
+                        }
+                    });
+                })(url);
+            } else {
+                bsdbg('post', pn, 'NOT SAVED:', !url ? 'no post url was found' : 'the post has no text');
                 console.log("Failed to collect bluesky post data",sobj);
+            }
         });
 
     }
@@ -894,8 +1266,19 @@ function get_page_info(){
 
     var grabpage=true; //set false if we are getting individual posts from facebook or wherever
 
+    if(/facebook\.com/i.test(url))
+        fbdbg('STEP 0 page url:', url, '; "Index individual facebook and bsky posts" setting (smedia) =', settings.smedia,
+              '; url matches ^https://www.facebook.com/ :', /^https:\/\/www.facebook.com\//i.test(url),
+              '; user =', settings.user, '; server =', settings.server, '; plugin disabled =', !!settings.disabled);
+
+    if(/bsky\.app/i.test(url))
+        bsdbg('STEP 0 page url:', url, '; "Index individual facebook and bsky posts" setting (smedia) =', settings.smedia,
+              '; url is exactly https://bsky.app/ (the only page posts are indexed on):', /^https:\/\/bsky.app\/$/i.test(url),
+              '; user =', settings.user, '; server =', settings.server, '; plugin disabled =', !!settings.disabled);
+
     if ( settings.smedia && /^https:\/\/www.facebook.com\//i.test(url)) {
         var posts={},iiv;
+        fbdbg('STEP 0 OK: post indexing is active, scanning every 5 seconds');
         setInterval(getfb,5000);
         grabpage=false;
     /*} else if (/^https:\/\/twitter.com\//i.test(url)) {
@@ -904,6 +1287,7 @@ function get_page_info(){
         setTimeout(gettw,5000);*/
     } else if (settings.smedia && /^https:\/\/bsky.app\/$/i.test(url)) {
         grabpage=false;
+        bsdbg('STEP 0 OK: post indexing is active, scanning every 5 seconds');
         setInterval(getbs,5000);
     }
 

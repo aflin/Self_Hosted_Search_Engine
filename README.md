@@ -103,6 +103,27 @@ It can be collapsed to minimize its presense on the page.
 
 If you do not wish to index every page, you can click the pause button in the control bar to enter *manual mode*.  When in *manual mode*, pages are not automatically saved to the server, but can be individually indexed by clicking the upload button in the control bar.
 
+# MCP Server (for LLMs)
+
+The server is also an [MCP](https://modelcontextprotocol.io) server, so a local or hosted LLM can search the pages you have saved and look through your history.  It pairs well with [alpacaLIPS](https://github.com/aflin/alpacaLIPS): that answers "what do public sources say", this answers "what have I already read".
+
+* URL: ``https://your.server/apps/shse/mcp.json`` (Streamable HTTP, stateless)
+* Authentication: the same key the browser plugin uses (the one "retrieve key" fills in), sent as an ``Authorization: Bearer <key>`` header.  ``apps/shse.js listUsers`` also prints it.
+
+For example, with Claude Code:
+```
+claude mcp add --transport http shse https://your.server/apps/shse/mcp.json --header "Authorization: Bearer YOUR_KEY"
+```
+
+The tools are read only.  Nothing can be stored or deleted through them:
+
+* ``shse_search`` - ranked keyword search over saved pages, optionally limited by site and date.
+* ``shse_fetch`` - the stored text of one page, in windows.
+* ``shse_locate`` - find an exact string inside one page.
+* ``shse_history`` - visits by date range and/or site, newest first.
+
+Note that the key is derived from your password, so changing the password changes the key for both the plugin and any MCP client.  Note also that the text of saved pages was written by whoever published them and is handed to the model as is.
+
 # License Caveats
 
 Note that although this project is permissively licensed, as is [rampart](https://rampart.dev/), the sql search engine is under a [different license](https://github.com/aflin/rampart/blob/main/LICENSE-rsal.txt).  For most DIYers, this should not restrict your use in any way.  If you want to sell this as a service or product, you must contact us.

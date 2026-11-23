@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# Build and PUSH the multi-arch image from what is under dockerfiles/.
+# To bring dockerfiles/ up to date with the repository (web_server/) and
+# with a rampart release, run ./update-vendored.sh first.
 
 set -euo pipefail
 

@@ -5,3 +5,4 @@ web_server/self-cert.conf
 web_server/self-cert.pem
 web_server/self-key.pem
 web_server/server.pid
+docker/.cache/

@@ -212,7 +212,7 @@
     -moz-box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);
     box-shadow:1px 4px 3px rgba(50, 50, 50, 0.64);
     border-top: none !important;
-    transform: translate(-1px,-10px);
+    transform: translate(-1px,-8px);
     padding-top: 10px;
     border: 1px solid #aaa;
     box-shadow:none;

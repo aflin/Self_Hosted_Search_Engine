@@ -7,7 +7,20 @@ if(!global.serverConf) serverConf={
         serverRoot:realPath(process.scriptPath+'/../')
     }
 
-var urlutil=require('rampart-url');
+// Parse and normalize a url with rampart.utils.urlComponents (WHATWG rules).
+// Replaces the deprecated rampart-url module.  Returns undefined if the url
+// cannot be parsed, otherwise the urlComponents object plus:
+//    url  - the normalized url without its #fragment (this is what gets hashed)
+//    host - the hostname without the port
+function urlparts(url) {
+    var c = urlComponents(url);
+    if(!c)
+        return;
+    var h = c.href.indexOf('#');
+    c.url  = h < 0 ? c.href : c.href.substring(0, h);
+    c.host = c.hostname;
+    return c;
+}
 
 // in case not using the web_server_conf.js that comes with shse, we need to load psl
 if(!global.psl || !global.pslnots) {
@@ -77,14 +90,14 @@ if(!global.psl || !global.pslnots) {
 
 // function to extract a proper domain, removing any subdomains
 // but respecting public suffix list.  suffix list is loaded in web_server_conf.js
-// returns urlutil.components with added 'domain' property, if properly extracted.
+// returns urlparts() with added 'domain' property, if properly extracted.
 function getDomain(url){
     var i=0, t, c
     
     if(/^file:\/\/\//.test(url))
         return {domain:'<filesystem>'}
 
-    c=urlutil.components(url);
+    c=urlparts(url);
     if(!c || !c.host)
         return;
 
@@ -111,8 +124,10 @@ function getDomain(url){
         return c;
     }
 
-    if(pslnots[d])
-        return d;
+    if(pslnots[d]) {
+        c.domain=d;
+        return c;
+    }
 
     var res, tdom, comp = d.split('.');
 
@@ -148,15 +163,30 @@ var cookie_expiration=86400;
 
 var Sql     = use.sql;
 var crypto  = use.crypto;
-var urlutil = use.url;
 
 var sql = Sql.connect(`${serverConf.dataRoot}/shse/`, true);
 
 // for type ahead suggestions
-sql.set({
-    "indexaccess":true,
-    "useDerivations": "en"
-});
+sql.set({"indexaccess":true});
+
+try {  ///don't fail if derivation file not found
+    sql.set({"useDerivations": "en"});
+} catch(e){
+    // backup if derivations/en/en-deriv is not found.
+    sql.set({
+        minwordlen: 6,
+        // the full suffix list (https://rampart.dev/docs/sql-set.html#suffixlist) is a bit
+        // much for a small corpus, especially when doing one word searches.  Here is a slightly
+        // more sane list given the circumstances.  This might change in the future.
+        suffixList: ["'",  "ies",  "s", 'ing', 'tion', 'sion', "able", "ible", 'ic', 'ed']
+    })
+}
+
+// sql.errMsg is not always a String: after a statement that succeeds it can
+// be undefined, so never call String methods on it directly.
+function sqlerr() {
+    return (typeof sql.errMsg == 'string') ? sql.errMsg : '';
+}
 
 function indexExists(idxname) {
     return !!sql.one(`select * from SYSINDEX where NAME='${idxname}'`);
@@ -500,19 +530,6 @@ function checkcred(req, require_admin) {
 
 function dosearch(q,u,s) {
     s= s ? parseInt(s) :0;
-/*
-    sql.set({
-        alEquivs: true,  //allow searches with '~myterm' for thesaurus lookup
-        minwordlen: 6,
-        // the full suffix list (https://rampart.dev/docs/sql-set.html#suffixlist) is a bit
-        // much for a small corpus, especially when doing one word searches.  Here is a slightly
-        // more sane list.  This might change in the future.
-        suffixList: ["'",  "ies",  "s", 'ing', 'tion', 'sion', "able", "ible", 'ic', 'ed']
-    })
-*/
-    sql.set({
-        "useDerivations": "en"
-    });
 
     if(s>90)
         sql.set({likeprows: s+100});
@@ -1453,8 +1470,8 @@ function firstlogin(req) {
             acctinfo=make_acctinfo(req.params.email, pass); //email not strictly required
 
             sql.exec("insert into accounts values (COUNTER, ?, 'A', ?)", [name, acctinfo]);
-            if(sql.errMsg.length)
-                return {txt: `error inserting into accounts table: ${sql.errMsg}`};
+            if(sqlerr().length)
+                return {txt: `error inserting into accounts table: ${sqlerr()}`};
 
             var ret=makeUserTables(name);
             if(ret.error) {
@@ -1615,7 +1632,7 @@ function store (req) {
     if(! (p.furl && p.text) )
         return makeReply( {json: {status:'Missing parameter'}} );
 
-    var comp = urlutil.components(p.furl);
+    var comp = urlparts(p.furl);
     if(!comp)
         return makeReply( {json: {status:'bad url'}} );
     if(/^file:\/\//.test(p.furl))
@@ -1633,16 +1650,16 @@ function store (req) {
         [hash, 'now', 'now', 1, p.dom, p.furl, p.img, p.title, '', p.text]  );
 
     if(res.rowCount == 0) {
-        if( sql.errMsg.indexOf('insert duplicate value') > -1 ) {
+        if( sqlerr().indexOf('insert duplicate value') > -1 ) {
             res = sql.exec(`update ${tbname}_pages set Last='now', LastV='now', Numvisits = Numvisits + 1,
                             Image=?, Title=?, Text=? where Hash=?`,
                             [p.img, p.title, p.text, hash]
                           );
             if(res.rowCount == 0)
-                return makeReply( {json: {status:`error updating: ${sql.errMsg}`}} );
+                return makeReply( {json: {status:`error updating: ${sqlerr()}`}} );
         }
         else
-            return makeReply( {json: {status:`error inserting: ${sql.errMsg}`}} );
+            return makeReply( {json: {status:`error inserting: ${sqlerr()}`}} );
     }
 
     if(p.history) {
@@ -1688,7 +1705,7 @@ function delentry(req){
     var user=sres.user, tbname=sres.tbname;
 
     if(p.furl) {
-        var comp = urlutil.components(p.furl);
+        var comp = urlparts(p.furl);
         if(!comp)
             return makeReply( {json: {status:'bad url'}} );
         p.furl = comp.url;
@@ -1747,6 +1764,59 @@ function checkentry(req) {
     if(herror) res.errMsg = herrorMsg;
 
     return makeReply( {json: res} );
+}
+
+// MCP SERVER: the archive as tools for an LLM.  See ../lib/shse-mcp.js
+// The client authenticates with the same key the browser plugin uses, sent
+// as "Authorization: Bearer <key>".  A header, never a parameter, so the key
+// stays out of the access log.
+// If lib/shse-mcp.js is not installed under the server root (e.g. shse.js was
+// linked into another rampart server), everything else still works and
+// mcp.json answers 404.
+var mcp = null;
+try {
+    mcp = require(serverConf.serverRoot + '/lib/shse-mcp.js');
+} catch(e) {
+    fprintf(stderr, "shse: MCP endpoint disabled, could not load %s/lib/shse-mcp.js\n", serverConf.serverRoot);
+}
+
+function bearerkey(req) {
+    var h = req.headers || {}, k, m;
+    for (k in h) {
+        if(k.toLowerCase() == 'authorization') {
+            m = /^Bearer\s+(\S+)\s*$/i.exec(String(h[k]));
+            return m ? m[1] : false;
+        }
+    }
+    return false;
+}
+
+function mcppage(req) {
+    if(!mcp)
+        return {status: 404, json: {error: "MCP is not installed on this server (lib/shse-mcp.js is missing)"}};
+
+    var unauth = {
+        status: 401,
+        headers: {"WWW-Authenticate": 'Bearer realm="shse"'},
+        json: {error: "Send the key from the browser plugin's settings as 'Authorization: Bearer <key>'"}
+    };
+
+    if(String(req.method || '').toUpperCase() != 'POST')
+        return {status: 405, headers: {"Allow": "POST"}, json: {error: "POST JSON-RPC to this URL"}};
+
+    var key = bearerkey(req);
+    // a key is a 64 char hex hash; anything else cannot match and is not looked up
+    if(!key || !/^[0-9a-f]{64}$/.test(key))
+        return unauth;
+
+    var acct;
+    try {
+        acct = sql.one("select Acctid from accounts where Acctinfo.$.passhash = ?", [key]);
+    } catch(e) {}
+    if(!acct || !acct.Acctid)
+        return unauth;
+
+    return mcp.handle(req, {sql: sql, user: acct.Acctid, tbname: sanitize_name(acct.Acctid)});
 }
 
 var suggestion_word_min_length=3;
@@ -1877,6 +1947,7 @@ if(!module || !module.exports) {
         "admin.json":   adminpage,
         "certs.json":   certpage,
         "hist.json":    histdata,
+        "mcp.json":     mcppage,
         //web pages
         "history.html": historypage,
         "search.html":  searchpage,
