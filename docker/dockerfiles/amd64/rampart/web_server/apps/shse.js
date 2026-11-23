@@ -558,7 +558,112 @@ function dosearch(q,u,s) {
     return res;
 }
 
-var ricos='<span title="Remove" class="rm rico hm">&#x2718;</span><span title="Remove" class="rm rmcb hm"><input type="checkbox" class="sitem" title="select item"></span>';
+/* SEARCH RESULTS PAGE
+
+   The markup is the same as the browser plugin's popup draws (see the
+   SEARCH RESULTS comment in extension/js/shsePopup.js) and is styled by
+   the same stylesheet, /css/results.css:
+
+     div.sr
+       header.sr-head     [select all] [Options] [Remove selected] ... [Results 1-10 of N]
+       ol.sr-list
+         li.sr-item       div.sr-ctl | article.sr-body | aside.sr-side
+       div.sr-pager       Previous  1 ... 15 16 [17] 18 19 ... 416  Next
+
+   Everything that came from a web page (title, url, site) is written
+   with %H.  The snippet is already html: stringformat('%mbH') in
+   dosearch() escapes the text and adds the <b> around matched words. */
+
+var SR_PER_PAGE = 10;     // results per page
+var SR_PAGE_WINDOW = 11;  // page links shown around the current page
+
+/* The numbers to show in the pager, 0 standing for a gap ("...").
+   Always the first and last page, and SR_PAGE_WINDOW pages centred on the
+   current one -- slid along, not cut short, when the current page is near
+   either end.  (Same as sr_pagelist() in the plugin's shsePopup.js.) */
+function sr_pagelist(cur, pages) {
+    var out=[], i, half=Math.floor(SR_PAGE_WINDOW/2);
+    if(pages <= SR_PAGE_WINDOW + 2) {
+        for(i=1;i<=pages;i++) out.push(i);
+        return out;
+    }
+    var start=cur-half, end=cur+half;
+    if(start < 2)        { start=2;        end=start+SR_PAGE_WINDOW-1; }
+    if(end > pages-1)    { end=pages-1;    start=end-SR_PAGE_WINDOW+1; }
+    // a gap that would hide a single page shows that page instead
+    if(start == 3) start=2;
+    if(end == pages-2) end=pages-1;
+    out.push(1);
+    if(start > 2) out.push(0);
+    for(i=start;i<=end;i++) out.push(i);
+    if(end < pages-1) out.push(0);
+    out.push(pages);
+    return out;
+}
+
+/* Previous, the page numbers, Next.  Previous and Next are always there,
+   greyed out when there is nowhere to go. */
+function sr_pager(q, skip, total) {
+    var cur=Math.floor(skip/SR_PER_PAGE)+1, pages=Math.max(1, Math.ceil(total/SR_PER_PAGE));
+    var base=`/apps/shse/search.html?q=${%U:q}`;
+    var out='<div class="sr-pager" role="navigation" aria-label="Result pages">';
+
+    function href(page) {
+        return page==1 ? base : base + '&amp;sk=' + ((page-1)*SR_PER_PAGE);
+    }
+    function step(label, page, cls) {
+        if(page < 1 || page > pages)
+            return `<span class="${cls} sr-disabled" aria-disabled="true">${label}</span>`;
+        return `<a class="${cls}" href="${href(page)}">${label}</a>`;
+    }
+
+    out += step('Previous', cur-1, 'sr-prev');
+    out += '<span class="sr-pages">';
+    sr_pagelist(cur, pages).forEach(function(n){
+        if(n==0)
+            out += '<span class="sr-gap" aria-hidden="true">&hellip;</span>';
+        else if(n==cur)
+            out += `<span class="sr-page sr-current" aria-current="page">${n}</span>`;
+        else
+            // on a narrow screen only the nearest pages (and first and last) are kept
+            out += `<a class="sr-page${(Math.abs(n-cur) > 2 && n!=1 && n!=pages) ? ' sr-far' : ''}" href="${href(n)}" aria-label="Page ${n}">${n}</a>`;
+    });
+    out += '</span>';
+    out += step('Next', cur+1, 'sr-next');
+    return out + '</div>';
+}
+
+function sr_item(r) {
+    var d = new Date(0);
+    d.setUTCSeconds(parseInt(r.last));
+
+    var title = String(r.title||'').replace(/\s+/g,' ').trim();
+    if(!title.length) title = r.url;
+
+    // only ordinary web and file urls become links
+    var href = /^(https?|file|ftp):/i.test(r.url) ? r.url : '#';
+    var m = /^https?:\/\/[^\/]+/i.exec(r.url);
+    var favico = m ? m[0] + '/favicon.ico' : '/images/home.ico';
+    var dom = r.dom ? r.dom : '';
+
+    return `
+<li class="sr-item" data-hash="${%H:r.hash}" data-dom="${%H:dom}">
+  <div class="sr-ctl">
+    <button type="button" class="sr-del" title="Remove" aria-label="Remove this result">&#x2718;</button>
+    <input type="checkbox" class="sitem" title="Select" aria-label="Select this result">
+  </div>
+  <article class="sr-body">
+    <h3 class="sr-title"><a target="_blank" rel="noopener" href="${%H:href}" title="${%H:title}">${%H:title}</a></h3>
+    <div class="sr-url"><img class="sr-fav" alt="" width="15" height="15" src="${%H:favico}"><span>&gt; ${%H:r.url}</span></div>
+    <p class="sr-snippet">${r.abstract}</p>
+  </article>
+  <aside class="sr-side">
+    <time class="sr-date" datetime="${dateFmt('%Y-%m-%dT%H:%M:%S%z',d)}">(${dateFmt('%m/%d/%Y %H:%M',d)})</time>` +
+    ( r.image ? `
+    <img class="sr-thumb" alt="" src="${%H:r.image}">` : '' ) + `
+  </aside>
+</li>`;
+}
 
 function searchpage(req) {
     var top, user, tbname, cred=checkcred(req);
@@ -573,6 +678,7 @@ function searchpage(req) {
     var res, p=req.params;
     var q = p.q?p.q:'';
     var skip=p.sk?parseInt(p.sk):0;
+    if(isNaN(skip) || skip < 0) skip=0;
 
     if(cred.type.toLowerCase()=='a')
         top=adminHtmlTop;
@@ -581,6 +687,7 @@ function searchpage(req) {
     var head=sprintf(htmlHeadfmt, user);
     req.put(`
 ${head}
+<link rel="stylesheet" href="/css/results.css">
 ${endHtmlHead}
 ${htmlBody}
 ${top}
@@ -592,118 +699,36 @@ ${htmlMain}
     if(p.q) {
         res=dosearch(p.q,tbname,skip);
         var total = res.countInfo.indexCount;
-        var cntinfo = res.rowCount ?
-                      `Results ${skip+1}-${skip+res.rowCount} of ${total}` :
-                      `no ${total?'more ':''}results for ${q}`;
-//req.printf("<pre>%H</pre>", sprintf("\n%3J\n", res) );
-        req.put(`
-<div id="res">
-    <div title="click to show database editing options" id="showrm">
-        <label class="hide ib sall">
-            <input style="vertical-align:middle" type="checkbox" id="sall" class="hide ib" title="Select All">Select All
-        </label>
-        <span id="showopt" style="position:relative;">
-            <span id="showlabel">Options</span>
-            <span id="showico" title="click to hide database editing options">‣</span>
-        </span>
-        <span style="display:inline-block;height:22px;padding: 2px 0px 0px 5px;">&nbsp;
-            <span id="delsel" class="hide">
-                <button style="padding: 2px 5px 0px 5px;border:1px solid #b00; border-radius:7px; position:relative;top:0px;left:45px;" id="rmselected">Remove Select Items</button>
-            </span>
-        </span>
-        <span style="${res.rowCount?'float:right':'width:100%;text-align:center;display: inline-block;font-size: 16px;'}">${cntinfo}</span>
-    </div>`);
-        for (var i=0;i<res.rows.length;i++) {
-			var r=res.rows[i];
-			var favico, ico=r.image;
-			var icl = r.image? " hov" : '';
-			var d= new Date(0);
-			d.setUTCSeconds(parseInt(r.last));
 
-			favico=r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico';
-
-			/*
-			if(!r.image) {
-			    ico='/images/home_website_start_house.svg'
-			    //icl = icl + ' cfav';
-            }
-			req.put('<div data-hash="'+r.hash+'" data-dom="'+r.dom+'" id="r'+i+'" class="resi"><span class="imgwrap">'+ricos+
-                '<img class="fimage'+icl+'" src="'+ico+'"'+
-                (favico?' data-favico="'+favico+'"':'') + '></span>'+
-                '<span class="itemwrap"><span class="abstract nowrap"><a class="url-a tar" ' +
-                'target="_blank" href="'+r.url+'">'+
-                sprintf("%H",r.title.replace(/\s+/g,' '))+'</a><span class="timestamp">('+d.toLocaleString()+
-                ')</span></span><br><span class="abstract url-span">'+r.url+
-                '</span></span><br><span class="abstract">'+r.abstract+"</span></div>"
-			);
-			*/
-			req.put(`
-<section class="entry" data-hash="${r.hash}" data-dom="${r.dom}">
-  ${ricos}
-  <div class="info">
-    <div class="link">
-      <a target="_blank" href="${r.url}">${sprintf("%H",r.title.replace(/\s+/g,' '))}</a>
-    </div>
-    <div class="subtext">
-      <img src="${favico}" class="resico" />
-      <span class="url-text">&gt; ${r.url}<br>
-      </span>
-    </div>
-    <div class="description">
-        ${r.image ? '<img src="' + r.image + '" class="hov hov-inline">':''}
-        ${r.abstract}
-    </div>
-  </div>
-  <div class="thumb">
-      <span class="tstamp">(${dateFmt('%m/%d/%Y %H:%M',d)})</span><br>`
-      + ( r.image ? `<img src=${r.image} class="hov">` : '' ) +
-  `</div>
-</section>`);
-        }
-        req.put('</div>');
-    }
-
-    // number pages like        1  2  3  4  5  6  7  8  9 10 Next    or
-    //                   Prev   1 ..  6  7  8  9 10 11 12 13 Next
-    skip = Math.floor(skip/10) * 10;
-    var i=0, pag='', surl=`/apps/shse/search.html?q=${%U:q}`;
-    var curpage = skip/10 + 1;
-    var npages = 1 + Math.floor(total/10);
-    var ppages;
-    if(total>0) {
-        if(skip < 55) {
-            if(curpage>1)
-                pag=`<span class="ppag"><a href="${surl}&sk=${skip-10}">Prev</a></span>`;
-            if(npages > 10) ppages=10;
-            else ppages=npages;
+        if(!res.rowCount) {
+            req.put(`<p class="sr-empty">no ${total>0?'more ':''}results for ${%H:q}</p>`);
+            // past the last page: still offer the way back
+            if(total>0)
+                req.put('<div class="sr">' + sr_pager(q, skip, total) + '</div>');
         } else {
-            pag=`<span class="ppag"><a href="${surl}&sk=${skip-10}">Prev</a></span>`+
-                `<span class="pag"><a href="${surl}">1</a></span>` +
-                '<span class="pag">..</span>';
-            ppages=curpage+3;
-            if(ppages>npages)ppages=npages;
-            i=curpage-5;
+            req.put(`
+<div class="sr">
+<header class="sr-head">
+  <div class="sr-ctl"><input type="checkbox" id="sall" title="Select all" aria-label="Select all results"></div>
+  <div class="sr-headmain">
+    <button type="button" class="sr-toggle" id="showopt" aria-expanded="false" title="click to show database editing options"><span class="sr-caret" aria-hidden="true"></span>Options</button>
+    <button type="button" class="sr-remove" id="rmselected">Remove Selected Items</button>
+    <span class="sr-count">Results ${skip+1}-${skip+res.rowCount} of ${total}</span>
+  </div>
+</header>
+<ol class="sr-list">`);
+            for (var i=0;i<res.rows.length;i++)
+                req.put(sr_item(res.rows[i]));
+            req.put('</ol>');
+            req.put(sr_pager(q, skip, total));
+            req.put('</div>');
         }
-
-        for (;i<ppages;i++) {
-            if(i==curpage-1)
-                pag+=`<span class="pag">${i+1}</span>`;
-            else if(!i)
-                pag+=`<span class="pag"><a href="${surl}">1</a></span>`
-            else
-                pag+=`<span class="pag"><a href="${surl}&sk=${i*10}">${i+1}</a></span>`
-        }
-        skip+=10;
-        if(skip<total)
-            pag+=`<span class="npag"><a href="${surl}&sk=${skip}">Next</a></span>`;
     }
+
     return {html:`
-<p><center>${pag}</center></p>
 ${endHtmlMain}
 ${htmlFooter}
 ${endHtmlBody}`}
-
-
 }
 
 function userpage(req){
@@ -1774,11 +1799,16 @@ function checkentry(req) {
 // linked into another rampart server), everything else still works and
 // mcp.json answers 404.
 var mcp = null;
-try {
-    mcp = require(serverConf.serverRoot + '/lib/shse-mcp.js');
-} catch(e) {
-    fprintf(stderr, "shse: MCP endpoint disabled, could not load %s/lib/shse-mcp.js\n", serverConf.serverRoot);
+function loadmcp() {
+    try {
+        mcp = require(serverConf.serverRoot + '/lib/shse-mcp.js');
+    } catch(e) {
+        mcp = null;
+    }
+    return mcp;
 }
+if(!loadmcp())
+    fprintf(stderr, "shse: MCP endpoint disabled, could not load %s/lib/shse-mcp.js\n", serverConf.serverRoot);
 
 function bearerkey(req) {
     var h = req.headers || {}, k, m;
@@ -1792,7 +1822,8 @@ function bearerkey(req) {
 }
 
 function mcppage(req) {
-    if(!mcp)
+    // try again: the module may have been installed after this thread loaded shse.js
+    if(!mcp && !loadmcp())
         return {status: 404, json: {error: "MCP is not installed on this server (lib/shse-mcp.js is missing)"}};
 
     var unauth = {

@@ -1,0 +1,394 @@
+/* Search results, in the browser plugin's popup and on the server's search
+   page.  The same file is kept in three places and should stay identical:
+
+       extension/css/results.css
+       extensionv2/css/results.css
+       web_server/html/css/results.css
+
+   The markup is described in the SEARCH RESULTS comments in
+   extension/js/shsePopup.js (popup, drawn in the browser) and
+   web_server/apps/shse.js (web page, drawn by the server).
+
+   Every class here starts with "sr-" so that nothing in common.css, which
+   is shared with the history view and the settings box, applies to it. */
+
+.sr {
+    /* Width of the editing column (remove mark + select box).  It is always
+       there, and is pulled left by its own width into the space to the left
+       of the results (the popup's 30px <body> padding in shsePopup.html; the
+       padding of <main> on the web page), so the text starts in the same
+       place whether or not "Options" is open: opening it only makes the
+       controls visible.  Keep this no wider than that space. */
+    --sr-ctl: 30px;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: #222;
+}
+
+/* The header and every result share these columns:
+   [ editing controls | text | date and thumbnail ] */
+.sr-head,
+.sr-item {
+    display: grid;
+    grid-template-columns: var(--sr-ctl) minmax(0, 1fr) auto;
+    margin-left: calc(-1 * var(--sr-ctl));
+}
+
+/* ---------- editing column ---------- */
+
+.sr-ctl {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;   /* the select boxes line up on the right edge */
+    gap: 2px;
+    min-width: 0;
+    padding-right: 3px;
+    visibility: hidden;
+}
+.sr.is-editing .sr-ctl {
+    visibility: visible;
+}
+.sr-ctl input[type="checkbox"] {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    cursor: pointer;
+}
+.sr-del {
+    flex: none;
+    width: 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: red;
+    font: bold 14px/1 Arial, sans-serif;
+    cursor: pointer;
+}
+.sr-del:hover {
+    color: #a00;
+}
+
+/* ---------- header ---------- */
+
+.sr-head {
+    align-items: center;
+    min-height: 26px;
+    margin-bottom: 4px;
+}
+.sr-headmain {
+    grid-column: 2 / 4;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+.sr-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.sr-caret::before {
+    content: "\25B8";            /* small right-pointing triangle */
+    display: inline-block;
+    font-size: 14px;
+    line-height: 1;
+}
+.sr-toggle[aria-expanded="true"] .sr-caret::before {
+    transform: rotate(90deg);
+}
+.sr-remove {
+    display: none;
+    padding: 2px 6px;
+    border: 1px solid #b00;
+    border-radius: 7px;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.sr.is-editing .sr-remove {
+    display: inline-block;
+}
+.sr-remove:hover {
+    background: #fee;
+}
+.sr-count {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+/* ---------- one result ---------- */
+
+.sr-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.sr-item {
+    align-items: start;
+    margin-top: 10px;
+    margin-bottom: 40px;
+}
+.sr-item > .sr-ctl {
+    padding-top: 6px;            /* level with the title */
+}
+.sr-body {
+    min-width: 0;                /* lets the title and url be cut with an ellipsis */
+}
+.sr-title {
+    margin: 0;
+    font-size: 16pt;
+    font-weight: 400;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sr-title a {
+    text-decoration: none;
+}
+.sr-title a:hover {
+    text-decoration: underline;
+}
+.sr-url {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    margin-top: 2px;
+    font-size: 9pt;
+    color: #ababab;
+}
+.sr-fav {
+    flex: none;
+    width: 15px;
+    height: 15px;
+}
+.sr-url span {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sr-snippet {
+    margin: 3px 0 0;
+    font-size: 10pt;
+    line-height: 1.3;
+    color: #595959;
+    overflow-wrap: anywhere;
+}
+
+/* ---------- date and thumbnail ---------- */
+
+.sr-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    width: 130px;
+    margin: 5px 0 0 14px;
+}
+.sr-date {
+    color: #76769f;
+    white-space: nowrap;
+}
+.sr-thumb {
+    display: block;
+    width: 130px;
+    height: 95px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+/* the larger view shown while the pointer is on a thumbnail */
+.sr-preview {
+    position: fixed;
+    z-index: 100000;
+    max-width: 350px;
+    max-height: 250px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+    visibility: hidden;          /* until it has loaded and been placed */
+}
+
+/* ---------- previous / page numbers / next ---------- */
+
+.sr-pager {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 10px 0;
+}
+.sr-pages {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 2px;
+    min-width: 0;
+}
+/* the popup draws these as buttons, the web page as links */
+.sr-pager button,
+.sr-pager a,
+.sr-disabled {
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: blue;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+.sr-pager button:hover,
+.sr-pager a:hover {
+    text-decoration: underline;
+}
+.sr-pager button:disabled,
+.sr-disabled {
+    color: #b5b5b5;
+    cursor: default;
+    text-decoration: none;
+}
+.sr-page {
+    min-width: 20px;
+    text-align: center;
+}
+.sr-current {
+    padding: 2px 4px;
+    border-radius: 4px;
+    background: #e8eefc;
+    color: #222;
+    font-weight: bold;
+}
+.sr-gap {
+    color: #888;
+}
+.sr-prev,
+.sr-next {
+    flex: none;
+}
+
+.sr-empty {
+    margin: 0;
+}
+
+/* ---------- messages and the delete dialog ---------- */
+
+.sr-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: rgba(240, 240, 240, 0.8);
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+}
+.sr-toast,
+.sr-dialog {
+    border: 1px solid gray;
+    box-shadow: 4px 4px 2px grey;
+    background-color: #eee;
+}
+.sr-toast {
+    padding: 8px 12px;
+    white-space: nowrap;
+}
+.sr-toast-ok {
+    background-color: yellow;
+}
+.sr-toast-err {
+    background-color: #f66;
+}
+.sr-dialog {
+    max-width: 440px;
+    padding: 10px 12px;
+}
+.sr-dialog h2 {
+    margin: 0;
+    font-size: 13px;
+}
+.sr-dialog-url {
+    margin: 2px 0 10px;
+    font-size: 10px;
+    color: #07c;
+    overflow-wrap: anywhere;
+}
+.sr-dialog-choices {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    align-items: center;
+    margin: 0;
+}
+.sr-dialog-choices dt,
+.sr-dialog-choices dd {
+    margin: 0;
+}
+.sr-dialog-foot {
+    margin: 12px 0 0;
+    text-align: right;
+}
+
+/* ---------- narrow screens ---------- */
+
+@media screen and (max-width: 480px) {
+    .sr-item {
+        grid-template-columns: var(--sr-ctl) minmax(0, 1fr);
+    }
+    .sr-headmain {
+        grid-column: 2;
+    }
+    /* the date and a small thumbnail go under the text */
+    .sr-side {
+        grid-column: 2;
+        flex-direction: row-reverse;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        width: auto;
+        margin: 6px 0 0;
+    }
+    .sr-thumb {
+        width: 76px;
+        height: 46px;
+    }
+    /* fewer page numbers: first, last and two either side of the current one */
+    .sr-far {
+        display: none;
+    }
+}
+
+/* ---------- the web page on a narrow screen ---------- */
+
+/* Below this width <main> has too little padding to hold the editing column,
+   so there it takes no room until "Options" is opened, and the text moves
+   over to make room.  (The popup always has its 30px.) */
+@media screen and (max-width: 600px) {
+    main .sr {
+        --sr-ctl: 0px;
+    }
+    main .sr.is-editing {
+        --sr-ctl: 30px;
+    }
+    main .sr-head,
+    main .sr-item {
+        margin-left: 0;
+    }
+    main .sr-ctl {
+        overflow: hidden;
+    }
+}

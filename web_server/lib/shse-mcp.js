@@ -21,7 +21,7 @@
 rampart.globalize(rampart.utils);
 
 var VERSIONS = ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26"];
-var SERVER_INFO = { name: "shse", version: "0.1.0" };
+var SERVER_INFO = { name: "shse", version: "0.1.2" };
 
 var INSTRUCTIONS =
     "This is the user's PERSONAL web archive: the text of pages they " +
@@ -49,9 +49,25 @@ var INSTRUCTIONS =
     "string inside one page; shse_history lists visits by time and site, " +
     "including pages whose text was never saved.\n\n" +
 
-    "CITE with the page's own `url` and the date in `last_saved` or " +
-    "`visited`, exactly as returned. The stored text is a snapshot from " +
-    "that date; the live page may have changed or require a login.\n\n" +
+    "YOUTUBE: a saved video page can include what was said in it. Saves " +
+    "made by plugin 0.4.0 or later put it at the end of the page text " +
+    "under a line reading `Transcript:`, one line per half minute, each " +
+    "starting with the time as [m:ss] or [h:mm:ss]; use shse_locate with " +
+    "needle \"Transcript:\" to find where it starts, and quote the time " +
+    "when you point the user at a moment. Older saves hold the same words " +
+    "as unlabelled running text with no times. A video with no transcript " +
+    "was saved without captions.\n\n" +
+
+    "ALWAYS GIVE THE LINK. Every page and every visit you mention to the " +
+    "user must come with its link, so they can open it: the whole point " +
+    "of this archive is getting back to a page. Each result carries " +
+    "`link`, a ready-made markdown link of the form [title](url). Copy it " +
+    "into your answer exactly as given -- do not retype, shorten, tidy or " +
+    "guess a url, and never give a link for a page that was not returned " +
+    "to you in this conversation. A list of pages or videos is a list of " +
+    "links. Give the date in `last_saved` or `visited` alongside it. The " +
+    "stored text is a snapshot from that date; the live page may have " +
+    "changed or require a login.\n\n" +
 
     "This archive is private. Do not repeat its contents anywhere the " +
     "user has not asked you to.";
@@ -67,7 +83,9 @@ var TOOLS = [
             "Keyword search over the text of the pages the user has saved. " +
             "Results are ranked best first and each carries an `id` for " +
             "shse_fetch and shse_locate, the page `url`, when it was last " +
-            "saved, and a snippet around the best match.",
+            "saved, and a snippet around the best match. Each result also " +
+            "carries `link`, a markdown link to the page: include it, " +
+            "verbatim, for every result you tell the user about.",
         inputSchema: {
             type: "object",
             properties: {
@@ -131,7 +149,9 @@ var TOOLS = [
             "range and/or site. With no arguments it returns the most " +
             "recent visits. History covers every visit, including pages " +
             "whose text was not saved; `saved` says whether shse_fetch " +
-            "will work on that `id`.",
+            "will work on that `id`. Each visit carries `link`, a markdown " +
+            "link to the page (for a video, the video itself): include it, " +
+            "verbatim, for every visit you tell the user about.",
         inputSchema: {
             type: "object",
             properties: {
@@ -152,6 +172,24 @@ var TOOLS = [
 ];
 
 /* ---------- helpers ---------- */
+
+/* Sent with every result that holds pages.  Measured: a model asked "what
+   youtube videos did I watch" listed the titles and left out every url,
+   although each visit carried one.  The instructions are read once at the
+   start of a conversation; this arrives next to the data, when the answer
+   is being written. */
+var LINK_DIRECTIVE =
+    "Show the user the link for every item you mention: copy its `link` " +
+    "field (a markdown link) into your answer verbatim. Do not list a " +
+    "title without its link.";
+
+/* [title](url), with the characters that would break the markdown escaped */
+function mdlink(title, url) {
+    var t = tidy(title).replace(/([\[\]\\])/g, "\\$1");
+    var u = String(url || "").replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/ /g, "%20");
+    if (!t.length) t = u;
+    return "[" + t + "](" + u + ")";
+}
 
 function clamp(v, lo, hi, dflt) {
     var n = parseInt(v);
@@ -234,8 +272,8 @@ function search(ctx, a) {
     }
 
     var out = { query: q, results: res.rows.map(function (r) {
-        return { id: r.id, title: tidy(r.Title), url: r.Url, site: r.Dom,
-                 last_saved: stamp(r.Last), visits: r.Numvisits,
+        return { id: r.id, title: tidy(r.Title), url: r.Url, link: mdlink(r.Title, r.Url),
+                 site: r.Dom, last_saved: stamp(r.Last), visits: r.Numvisits,
                  snippet: String(r.snip || "").replace(/\s+/g, " ").trim() };
     }) };
     /* indexCount is the unfiltered match count, so it is only reported
@@ -245,6 +283,8 @@ function search(ctx, a) {
     if (!out.results.length)
         out.note = skip ? "No further results." :
             "Nothing matched. Try fewer or different words, or drop the filters.";
+    else
+        out.cite = LINK_DIRECTIVE;
     return out;
 }
 
@@ -259,6 +299,7 @@ function fetch(ctx, a) {
     var len = clamp(a.length, 1, 20000, 4000);
     var end = Math.min(doc.length, start + len);
     var out = { id: String(a.id).toLowerCase(), title: tidy(row.Title), url: row.Url,
+                link: mdlink(row.Title, row.Url), cite: LINK_DIRECTIVE,
                 last_saved: stamp(row.Last), total: doc.length,
                 start: start, end: end, text: doc.substring(start, end) };
     if (end < doc.length) out.next_start = end;
@@ -285,6 +326,7 @@ function locate(ctx, a) {
         at = i + n.length;
     }
     return { id: String(a.id).toLowerCase(), title: tidy(row.Title), url: row.Url,
+             link: mdlink(row.Title, row.Url), cite: LINK_DIRECTIVE,
              last_saved: stamp(row.Last), needle: needle,
              occurrences: total, shown: found.length, matches: found };
 }
@@ -316,11 +358,13 @@ function history(ctx, a) {
 
     var out = { visits: res.rows.map(function (r) {
         return { visited: stamp(r.Date), title: tidy(r.Title), url: r.Url,
-                 site: r.Dom, id: r.id, saved: saved[r.id] };
+                 link: mdlink(r.Title, r.Url), site: r.Dom, id: r.id, saved: saved[r.id] };
     }) };
     if (res.rows.length == limit) out.next_skip = skip + limit;
     if (!res.rows.length)
         out.note = skip ? "No further visits." : "No visits matched.";
+    else
+        out.cite = LINK_DIRECTIVE;
     return out;
 }
 

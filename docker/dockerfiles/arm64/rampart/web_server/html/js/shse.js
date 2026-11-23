@@ -61,193 +61,149 @@ function getCookie(name) {
 }
 
 
-function loadImage(img) {
-    var t=new Image();
-    var url = img.attr('src');
-    if(url) {
-        t.onload=function() {
-            img.attr('src',url).addClass('imset');
-        }
-        t.onerror=function(){
-            img.css('display','none').addClass('imset');
-        }
-    } else {
-        img.css('display','none').addClass('imset');
-    }
-    t.src=url;
-    setTimeout(function(img,t){
-        if(!img.hasClass('imset')) {
-            img.css('display','none').addClass('imset');
-            t.src="";
-        }
-    },6000,img,t);
-}
-function loadIco(img) {
-    var t=new Image();
-    var url = img.attr('src');
-    if(url) {
-        t.onload=function() {
-            img.attr('src',url).addClass('imset');
-        }
-        t.onerror=function(){
-            img.attr('src',"/images/home.ico");
-        }
-    } else {
-        img.attr('src',home.ico).addClass('imset');
-    }
-    t.src=url;
-    setTimeout(function(img,t){
-        if(!img.hasClass('imset')) {
-            img.attr('src',"/images/home.ico").addClass('imset');
-            t.src="";
-        }
-    },3000,img,t);
-        
-        
-}
-
-function attachhov(){
-    $('.hov').hover(function(){
-        var t=$(this),h,top,bh=window.innerHeight+window.scrollY,bottom=25;
-        var im= new Image();
-        var isinline = t.hasClass('hov-inline');
-        var clearance=250;
-        if(isinline) {
-            bottom=140;
-            clearance=180;
-        }
-        t.closest('section').css('z-index','100');
-        $('.ishov2').remove();
-        im.onload = function() {
-            h=t.parent().find('.hov');
-            top=h.offset().top - $(window).scrollTop();
-            if (top<280) bottom=top-clearance;
-            t.after('<img class="ishov2" style="bottom:'+bottom+'px;" src="'+t.attr('src')+'">');
-        }
-        $(im).addClass('hov');
-        im.src=t.attr('src');
-    },function(){
-        $('.ishov2').remove();
-        $(this).closest('section').css('z-index','');
-    });
-}
-
 function postfail() {
-    msg = 'Could not connect to server.'
-    alert(msg);
+    alert('Could not connect to server.');
 }
 
-function mktitles(){
-    $('#sall').click(function(){
-        var t=$(this);
-        if(t.is(':checked'))
-            $('.sitem').prop('checked',true);
-        else
-            $('.sitem').prop('checked',false);
-    });
+/* =====================================================================
+   SEARCH RESULTS PAGE
 
-    $('#showico,#showopt').click(function(e){
-        e.stopImmediatePropagation();
-        var t=$('#showico');
-        if (t.hasClass('isvis')) {
-            $('.hm').hide(250);
-            t.css('transform','rotate(270deg) translate(4px,0px)');
-            t.removeClass('isvis');
-            t.attr('title','click to show database editing options');
-            $('#delsel').css('visibility','hidden');
-            $('main').css('margin-left','');
-        } else {
-            $('.hm').show(250);
-            t.css('transform','rotate(90deg)');
-            t.addClass('isvis');
-            t.attr('title','click to hide database editing options');
-            $('#delsel').css('visibility','visible');
-            $('main').css('margin-left','40px');
+   The results are drawn by the server (searchpage() in apps/shse.js) with
+   the same markup and stylesheet (/css/results.css) as the browser plugin's
+   popup.  This is the behaviour: the Options toggle, select all, removing
+   entries, and the larger view of a thumbnail.
+   ===================================================================== */
+
+function sr_overlay(node) {
+    $('.sr-overlay').remove();
+    var o=$('<div class="sr-overlay"></div>').append(node);
+    $('body').append(o);
+    return o;
+}
+
+function sr_toast(msg, kind, ms, then) {
+    var o=sr_overlay($('<div class="sr-toast" role="status"></div>').addClass('sr-toast-'+kind).text(msg));
+    setTimeout(function(){
+        o.fadeOut(250, function(){ o.remove(); if(then) then(); });
+    }, ms);
+}
+
+function sr_delete(req) {
+    $.post({
+        url: '/apps/shse/delete.json',
+        data: req,
+        success: function(data){
+            if (data.status=='ok')
+                // draw the same page again, now without what was removed
+                sr_toast("Deleted "+data.deleted+" items", 'ok', 1000, function(){ location.reload(); });
+            else
+                sr_toast(data.status, 'err', 2500);
+        },
+        error: function(x,s,s2) {
+            sr_toast('Error: '+s+' '+s2, 'err', 2500);
         }
-    });
+    }).fail(postfail);
+}
 
-    function dodel(popup, req) {
-        $.post({
-            url: '/apps/shse/delete.json' ,
-            data: req,
-            success: function(data){
-                var msg,color,delay=1000;
+/* the "Delete Entry?" dialog for one result */
+function sr_askdelete(item) {
+    var hash=item.attr('data-hash'), dom=item.attr('data-dom'), url=item.find('.sr-title a').attr('href');
+    if(!dom || dom=="null") dom=null;
 
-                if (data.status=='ok') {
-                    msg="Success: deleted "+data.deleted+" items";
-                    color="yellow";
-                } else {
-                    msg=data.status;
-                    color="red";
-                    delay=2500;
-                }
+    var dlg=$('<div class="sr-dialog" role="dialog" aria-modal="true" aria-labelledby="sr-dialog-title"></div>');
+    dlg.append($('<h2 id="sr-dialog-title">Delete Entry?</h2>'));
+    dlg.append($('<p class="sr-dialog-url"></p>').text(url));
 
-                popup.html('<table><tr><td><span style="white-space:nowrap;background-color:'+color+'">'+msg+'</span></td></tr></table>');
-
-                setTimeout(function(){
-                    popup.find('table').hide(250,function(){
-                        popup.remove();
-                        location.reload();
-                    });
-                },delay);
-            },
-
-            error: function(x,s,s2) {
-                popup.html('<table><tr><td><span style="white-space:nowrap;background-color:red">Error:'+s+' ' +s2+'</span></td></tr></table>');
-                setTimeout(function(){
-                    popup.find('table').hide(250,function(){popup.remove();});
-                },2500);
-            }
-        }).fail(postfail);
+    var rows=$('<dl class="sr-dialog-choices"></dl>');
+    function choice(label, cls) {
+        rows.append($('<dt></dt>').text(label));
+        rows.append($('<dd></dd>').append($('<button type="button">Delete</button>').addClass(cls)));
     }
+    choice('Only this entry:', 'sr-do-entry');
+    if(dom)
+        choice('All from '+dom+':', 'sr-do-dom');
+    dlg.append(rows);
+    dlg.append($('<p class="sr-dialog-foot"><button type="button" class="sr-do-cancel">Cancel</button></p>'));
 
-    $('#rmselected').click(function(){
-        var popup, req={hash:[]};
-
-        $('body').append('<div class="popup"></div>');
-        popup=$('.popup');
-
-        $('.sitem:checked').each(function(i){
-            req.hash.push( $(this).closest('.entry').attr('data-hash') );
-        });
-
-        if( req.hash.length==0) {
-            popup.html('<table><tr><td><span style="white-space:nowrap;background-color:red">Nothing selected</span></td></tr></table>');
-
-            setTimeout(function(){
-                popup.find('table').hide(250,function(){
-                    popup.remove();
-                    if (data.status=='ok') dosearch();
-                });
-            },500);
-        }
-        else
-            dodel(popup, req);
+    var o=sr_overlay(dlg);
+    o.on('click', 'button', function(){
+        var b=$(this), req={};
+        if(b.hasClass('sr-do-cancel')) { o.remove(); return; }
+        if(b.hasClass('sr-do-entry')) req.hash=[hash];
+        else req.dom=dom;
+        o.remove();
+        sr_delete(req);
     });
-    
-    $('.rico').click(function(){
-        var t=$(this),r=t.closest('.entry'),h=r.attr('data-hash'),d=r.attr('data-dom'), req={};
-        var popup;
-        if(d=="null") d=null;
-        $('body').append('<div class="popup"><table><tr><td colspan=2><b>Delete Entry?</b><br><span style="font-size:10px;color:#07c">'+r.find('a').attr('href')+'</td></tr>'+
-            '<tr><td>Only this entry:</td><td><button class="rmb rme">Delete</button></td></tr>'+
-            (d ? '<tr><td>All from '+d+':</td><td><button class="rmb rmd">Delete</button></td>/tr>':"")+
-            '<tr><td colspan=2"><button style="float:right" class="rmb" id="cancel">Cancel</button></td></tr>'+
-        '</table></div>');
-        popup=$('.popup');
-        $('.rmb').click(function(){ 
-            var b=$(this);
-            if (b.is('#cancel')) {
-                popup.remove();
-                return;
-            }
-            if (b.is('.rme')) 
-                req.hash=[h];
-            else if (b.is('.rmd'))
-                req.dom=d;
-            
-            dodel(popup,req);
+    dlg.find('.sr-do-cancel').focus();
+}
+
+/* open or close the editing column */
+function sr_setediting(on) {
+    $('.sr').toggleClass('is-editing', on);
+    $('#showopt').attr('aria-expanded', on ? 'true' : 'false')
+                 .attr('title', on ? 'click to hide database editing options' : 'click to show database editing options');
+    // nothing stays ticked out of sight
+    if(!on) $('#sall, .sr .sitem').prop('checked', false);
+}
+
+function sr_bind() {
+    var sr=$('.sr');
+
+    sr.on('click', '#showopt', function(){
+        sr_setediting(!sr.hasClass('is-editing'));
+    });
+
+    sr.on('change', '#sall', function(){
+        sr.find('.sitem').prop('checked', this.checked);
+    });
+
+    // keep the select-all box truthful when boxes are ticked one at a time
+    sr.on('change', '.sitem', function(){
+        var all=sr.find('.sitem');
+        $('#sall').prop('checked', all.length>0 && all.filter(':checked').length==all.length);
+    });
+
+    sr.on('click', '#rmselected', function(){
+        var req={hash:[]};
+        sr.find('.sitem:checked').each(function(){
+            req.hash.push($(this).closest('.sr-item').attr('data-hash'));
         });
+        if(!req.hash.length)
+            sr_toast('Nothing selected', 'err', 800);
+        else
+            sr_delete(req);
+    });
+
+    sr.on('click', '.sr-del', function(){
+        sr_askdelete($(this).closest('.sr-item'));
+    });
+
+    // a larger view of the thumbnail while the pointer is on it
+    sr.on('mouseenter', '.sr-thumb', function(){
+        var r=this.getBoundingClientRect();
+        var p=$('<img class="sr-preview" alt="">').attr('src', this.getAttribute('src'));
+        $('.sr-preview').remove();
+        $('body').append(p);
+        p.on('load', function(){
+            var h=this.offsetHeight, top=r.top + r.height/2 - h/2;
+            top=Math.max(8, Math.min(top, window.innerHeight - h - 8));
+            p.css({top: top+'px', right: (window.innerWidth - r.left + 10)+'px', visibility:'visible'});
+        });
+    });
+    sr.on('mouseleave', '.sr-thumb', function(){
+        $('.sr-preview').remove();
+    });
+
+    // A site with no favicon gets the house; a thumbnail that will not load is
+    // dropped.  The page may have finished loading some images already, so
+    // those that have failed by now are dealt with here as well.
+    function nofav(){ if(this.getAttribute('src')!='/images/home.ico') this.setAttribute('src','/images/home.ico'); }
+    function nothumb(){ $(this).remove(); }
+    sr.find('.sr-fav').on('error', nofav).each(function(){
+        if(this.complete && !this.naturalWidth) nofav.call(this);
+    });
+    sr.find('.sr-thumb').on('error', nothumb).each(function(){
+        if(this.complete && !this.naturalWidth) nothumb.call(this);
     });
 }
 
@@ -317,16 +273,8 @@ $(document).ready(function(){
 
 
     // SEARCH PAGE
-    if ($('#showico').length) {
-        mktitles();
-        attachhov();
-        $('.hov').each(function(){
-            loadImage($(this));
-        });
-        $('.resico').each(function(){
-            loadIco($(this));
-        });
-    }
+    if ($('.sr').length)
+        sr_bind();
 
 	// HISTORY PAGE
     var dpicker = $("#datepicker");

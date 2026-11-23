@@ -31,106 +31,43 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// for history calendar
+var lastcaldate;
+
+/* =====================================================================
+   SEARCH RESULTS
+
+   Markup and styling (css/results.css):
+
+     div.sr                          one per result page; .is-editing when "Options" is open
+       header.sr-head                [select all] [Options] [Remove selected] ... [Results 1-10 of N]
+       ol.sr-list
+         li.sr-item                  one result
+           div.sr-ctl                the remove mark and the select box
+           article.sr-body           title, url, snippet
+           aside.sr-side             date and thumbnail
+       div.sr-pager                  Previous, page numbers, Next
+
+   .sr-head and .sr-item are the SAME three column grid, so the select-all
+   box is above the per-result boxes because it is in the same column, not
+   because anything was positioned by hand.  The first column is 0 wide
+   until Options is opened.
+
+   What is kept between openings of the popup is the result DATA, not the
+   html: the page is drawn again from it, so a new layout is never fighting
+   html saved by an old one.
+   ===================================================================== */
+
+var RESULTS_LAYOUT = 2;   // bump if the shape of the saved data changes
+var sr_last = null;       // {q, skip, data} of what is on screen
+
 function dosave(all){
     var save={};
     save.lastq = $('#fq').val();
     if(lastcaldate) save.lastcaldate=lastcaldate;
-    if(all) {
-        save.lastr=$('#res').html();
-        //console.log(save.lastr);
-    }
+    if(all && sr_last)
+        save.lastres={layout:RESULTS_LAYOUT, q:sr_last.q, skip:sr_last.skip, data:sr_last.data};
     browser.storage.local.set(save);
-}
-
-
-var imtot=0, ictot=0, imcnt=0, iccnt=0;
-
-function checkdone() {
-    if(imcnt==imtot && iccnt==ictot) {
-        dosave(true);
-        console.log('saved');
-    }
-}
-
-function loadImage(img) {
-    var t=new Image();
-    var url = img.attr('src');
-    if(url) {
-        t.onload=function() {
-            img.attr('src',url).addClass('imset');
-            imcnt++;
-            checkdone();
-        }
-        t.onerror=function(){
-            img.css('display','none').addClass('imset');
-            imcnt++;
-            checkdone();
-        }
-    } else {
-        img.css('display','none').addClass('imset');
-    }
-    t.src=url;
-    setTimeout(function(img,t){
-        if(!img.hasClass('imset')) {
-            img.css('display','none').addClass('imset');
-            t.src="";
-        }
-    },6000,img,t);
-}
-
-function loadIco(img) {
-    var t=new Image();
-    var url = img.attr('src');
-    if(url) {
-        t.onload=function() {
-            img.attr('src',url).addClass('imset');
-            iccnt++;
-            checkdone();
-        }
-        t.onerror=function(){
-            img.attr('src',"images/home.ico");
-            iccnt++;
-            checkdone();
-        }
-    } else {
-        img.attr('src',home.ico).addClass('imset');
-    }
-    t.src=url;
-    setTimeout(function(img,t){
-        if(!img.hasClass('imset')) {
-            img.attr('src',"images/home.ico").addClass('imset');
-            t.src="";
-        }
-    },3000,img,t);
-}
-
-// for history calendar
-var lastcaldate;
-
-function attachhov(){
-    $('.hov').hover(function(){
-        var t=$(this),h,top,bh=window.innerHeight+window.scrollY,bottom=25;
-        var im= new Image();
-        var isinline = t.hasClass('hov-inline');
-        var clearance=250;
-        if(isinline) {
-            bottom=140;
-            clearance=180;
-        }
-        t.closest('section').css('z-index','100000');
-        $('.ishov2').remove();
-        im.onload = function() {
-            h=t.parent().find('.hov');
-            top=h.offset().top - $(window).scrollTop();
-            if (top<280) bottom=top-clearance;
-            t.after('<img class="ishov2" style="bottom:'+bottom+'px;" src="'+t.attr('src')+'">');
-        }
-        $(im).addClass('hov');
-        im.src=t.attr('src');
-    },function(){
-        $('.ishov2').remove();
-        $(this).closest('section').css('z-index','');
-    });
 }
 
 function postfail() {
@@ -145,133 +82,6 @@ Open server page in a new window?`;
     }
 }
 
-function mktitles(){
-    $('#sall').click(function(){
-        var t=$(this);
-        if(t.is(':checked'))
-            $('.sitem').prop('checked',true);
-        else
-            $('.sitem').prop('checked',false);
-    });
-
-    $('#showico,#showopt').click(function(e){
-        e.stopImmediatePropagation();
-        var t=$('#showico');
-        if (t.hasClass('isvis')) {
-            $('.hm').hide(250);
-            t.css('transform','rotate(270deg) translate(4px,0px)');
-            t.removeClass('isvis');
-            t.attr('title','click to show database editing options');
-            $('#delsel').css('visibility','hidden');
-        } else {
-            $('.hm').show(250);
-            t.css('transform','rotate(90deg)');
-            t.addClass('isvis');
-            t.attr('title','click to hide database editing options');
-            $('#delsel').css('visibility','visible');
-        }
-    });
-
-    function dodel(popup, req) {
-        req.user= gset.user;
-        req.key = gset.key;
-        $.post({
-            url: `https://${gset.server}/apps/shse/delete.json` ,
-            data: req, 
-
-            success: function(data){
-                var msg,color,delay=1000;
-
-                if (data.status=='ok') {
-                    msg="Deleted "+data.deleted+" items";
-                    color="yellow";
-                } else {
-                    msg=data.status;
-                    color="red";
-                    delay=2500;
-                }
-
-                popup.html('<table><tr><td><span style="white-space:nowrap;background-color:'+color+'">'+msg+'</span></td></tr></table>');
-
-                setTimeout(function(){
-                    popup.find('table').hide(250,function(){
-                        popup.remove();
-                        if (data.status=='ok') dosearch();
-                    });
-                },delay);
-            },
-
-            error: function(x,s,s2) {
-                popup.html('<table><tr><td><span style="white-space:nowrap;background-color:red">Error:'+s+' ' +s2+'</span></td></tr></table>');
-                setTimeout(function(){
-                    popup.find('table').hide(250,function(){popup.remove();});
-                },2500);
-            }
-        }).fail(postfail);
-    }
-
-    $('#rmselected').click(function(){
-        var popup, req={hash:[]};
-
-        $('body').append('<div class="popup"></div>');
-        popup=$('.popup');
-
-        $('.sitem:checked').each(function(i){
-            req.hash.push( $(this).closest('.resi').attr('data-hash') );
-        });
-
-        if( req.hash.length==0) {
-            popup.html('<table><tr><td><span style="white-space:nowrap;background-color:red">Nothing selected</span></td></tr></table>');
-
-            setTimeout(function(){
-                popup.find('table').hide(250,function(){
-                    popup.remove();
-                    if (data.status=='ok') dosearch();
-                });
-            },500);
-        }
-        else
-            dodel(popup, req);
-    });
-    
-    $('.rico').click(function(){
-        var t=$(this),r=t.closest('.resi'),h=r.attr('data-hash'),d=r.attr('data-dom'), req={};
-        var popup;
-        if(d=="null") d=null;
-        $('body').append('<div class="popup"><table><tr><td colspan=2><b>Delete Entry?</b><br><span style="font-size:10px;color:#07c">'+r.find('a').attr('href')+'</td></tr>'+
-            '<tr><td>Only this entry:</td><td><button class="rmb rme">Delete</button></td></tr>'+
-            (d?
-                '<tr><td>All from '+d+':</td><td><button class="rmb rmd">Delete</button></td>/tr>'+
-                '<tr><td>All from '+d+' and blacklist<br>(do not index) future visits to '+d+':</td><td><button class="rmb rmd rmbl">Delete</button></td></tr>'
-             :""
-             )+
-            '<tr><td colspan=2"><button style="float:right" class="rmb" id="cancel">Cancel</button></td></tr>'+
-        '</table></div>');
-        popup=$('.popup');
-        $('.rmb').click(function(){ 
-            var b=$(this);
-            if (b.is('#cancel')) {
-                popup.remove();
-                return;
-            }
-            if (b.is('.rme')) 
-                req.hash=[h];
-            else if (b.is('.rmd'))
-                req.dom=d;
-            
-            dodel(popup,req);
-            
-            if (b.is('.rmbl')) {
-                gset.exclude[d]=2;
-                console.log(gset);
-                browser.storage.local.set({exclude:gset.exclude});    
-            }
-            
-        
-        });
-    });
-}
-
 function fmtdate(date) {
   const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Add 1 as months are 0-indexed
   const day = date.getDate().toString().padStart(2, '0');
@@ -282,91 +92,321 @@ function fmtdate(date) {
   return `${month}/${day}/${year} ${hours}:${minutes}`;
 }
 
-function dosearch(skip,q) {
-    var res=$('#res');
-    var ricos='<span title="Remove" class="rm rico hm">&#x2718;</span><span title="Remove" class="rm rmcb hm"><input type="checkbox" class="sitem" title="select item"></span>';
+/* only ordinary web and file urls become links */
+function sr_safeurl(u) {
+    return /^(https?|file|ftp):/i.test(u||'') ? u : '#';
+}
 
+function sr_favicon(u) {
+    var m=/^https?:\/\/[^\/]+/i.exec(u||'');
+    return m ? m[0]+'/favicon.ico' : 'images/home.ico';
+}
+
+/* ---------- messages and dialogs ---------- */
+
+function sr_overlay(node) {
+    $('.sr-overlay').remove();
+    var o=$('<div class="sr-overlay"></div>').append(node);
+    $('body').append(o);
+    return o;
+}
+
+function sr_toast(msg, kind, ms, then) {
+    var o=sr_overlay($('<div class="sr-toast" role="status"></div>').addClass('sr-toast-'+kind).text(msg));
+    setTimeout(function(){
+        o.fadeOut(250, function(){ o.remove(); if(then) then(); });
+    }, ms);
+}
+
+/* ---------- deleting ---------- */
+
+function sr_delete(req) {
+    req.user=gset.user;
+    req.key =gset.key;
+    $.post({
+        url: `https://${gset.server}/apps/shse/delete.json`,
+        data: req,
+        success: function(data){
+            if (data.status=='ok')
+                // show the page they were on again, now without what was removed
+                sr_toast("Deleted "+data.deleted+" items", 'ok', 1000, function(){
+                    if(sr_last) dosearch(sr_last.skip, sr_last.q);
+                });
+            else
+                sr_toast(data.status, 'err', 2500);
+        },
+        error: function(x,s,s2) {
+            sr_toast('Error: '+s+' '+s2, 'err', 2500);
+        }
+    }).fail(postfail);
+}
+
+/* the "Delete Entry?" dialog for one result */
+function sr_askdelete(item) {
+    var hash=item.attr('data-hash'), dom=item.attr('data-dom'), url=item.find('.sr-title a').attr('href');
+    if(!dom || dom=="null") dom=null;
+
+    var dlg=$('<div class="sr-dialog" role="dialog" aria-modal="true" aria-labelledby="sr-dialog-title"></div>');
+    dlg.append($('<h2 id="sr-dialog-title">Delete Entry?</h2>'));
+    dlg.append($('<p class="sr-dialog-url"></p>').text(url));
+
+    var rows=$('<dl class="sr-dialog-choices"></dl>');
+    function choice(label, cls) {
+        rows.append($('<dt></dt>').text(label));
+        rows.append($('<dd></dd>').append($('<button type="button">Delete</button>').addClass(cls)));
+    }
+    choice('Only this entry:', 'sr-do-entry');
+    if(dom) {
+        choice('All from '+dom+':', 'sr-do-dom');
+        choice('All from '+dom+' and blacklist (do not index) future visits to '+dom+':', 'sr-do-dom sr-do-blacklist');
+    }
+    dlg.append(rows);
+    dlg.append($('<p class="sr-dialog-foot"><button type="button" class="sr-do-cancel">Cancel</button></p>'));
+
+    var o=sr_overlay(dlg);
+    o.on('click', 'button', function(){
+        var b=$(this), req={};
+        if(b.hasClass('sr-do-cancel')) { o.remove(); return; }
+        if(b.hasClass('sr-do-entry')) req.hash=[hash];
+        else req.dom=dom;
+        if(b.hasClass('sr-do-blacklist')) {
+            if(!gset.exclude) gset.exclude={};
+            gset.exclude[dom]=2;
+            browser.storage.local.set({exclude:gset.exclude});
+        }
+        o.remove();
+        sr_delete(req);
+    });
+    dlg.find('.sr-do-cancel').focus();
+}
+
+/* ---------- drawing ---------- */
+
+function sr_item(r) {
+    var d=new Date(0);
+    d.setUTCSeconds(parseInt(r.last));
+
+    var li=$('<li class="sr-item"></li>').attr('data-hash', r.hash).attr('data-dom', r.dom);
+
+    li.append(
+        $('<div class="sr-ctl"></div>')
+            .append('<button type="button" class="sr-del" title="Remove" aria-label="Remove this result">&#x2718;</button>')
+            .append('<input type="checkbox" class="sitem" title="Select" aria-label="Select this result">')
+    );
+
+    var title=String(r.title||'').replace(/\s+/g,' ').trim() || r.url;
+    var body=$('<article class="sr-body"></article>');
+    body.append($('<h3 class="sr-title"></h3>').append(
+        $('<a target="_blank" rel="noopener"></a>').attr('href', sr_safeurl(r.url)).attr('title', title).text(title)
+    ));
+    body.append($('<div class="sr-url"></div>')
+        .append($('<img class="sr-fav" alt="" width="15" height="15">').attr('src', sr_favicon(r.url)))
+        .append($('<span></span>').text('> '+r.url))
+    );
+    // the snippet is html made by the server: escaped text with <b> around the matched words
+    body.append($('<p class="sr-snippet"></p>').html(r.abstract||''));
+    li.append(body);
+
+    var side=$('<aside class="sr-side"></aside>');
+    side.append($('<time class="sr-date"></time>').attr('datetime', d.toISOString()).text('('+fmtdate(d)+')'));
+    if(r.image)
+        side.append($('<img class="sr-thumb" alt="">').attr('src', r.image));
+    li.append(side);
+
+    return li;
+}
+
+var SR_PER_PAGE = 10;    // results per page, as the server returns them
+var SR_PAGE_WINDOW = 11; // page links shown around the current page
+
+/* The numbers to show in the pager, 0 standing for a gap ("...").
+   Always the first and last page, and SR_PAGE_WINDOW pages centred on the
+   current one -- slid along, not cut short, when the current page is near
+   either end.  e.g. page 20 of 416:  1 0 15 16 17 18 19 20 21 22 23 24 25 0 416 */
+function sr_pagelist(cur, pages) {
+    var out=[], i, half=Math.floor(SR_PAGE_WINDOW/2);
+    if(pages <= SR_PAGE_WINDOW + 2) {
+        for(i=1;i<=pages;i++) out.push(i);
+        return out;
+    }
+    var start=cur-half, end=cur+half;
+    if(start < 2)        { start=2;        end=start+SR_PAGE_WINDOW-1; }
+    if(end > pages-1)    { end=pages-1;    start=end-SR_PAGE_WINDOW+1; }
+    // a gap that would hide a single page shows that page instead
+    if(start == 3) start=2;
+    if(end == pages-2) end=pages-1;
+    out.push(1);
+    if(start > 2) out.push(0);
+    for(i=start;i<=end;i++) out.push(i);
+    if(end < pages-1) out.push(0);
+    out.push(pages);
+    return out;
+}
+
+/* Previous, the page numbers, Next.  Previous and Next are always there,
+   greyed out when there is nowhere to go. */
+function sr_pager(q, skip, total) {
+    var cur=Math.floor(skip/SR_PER_PAGE)+1, pages=Math.max(1, Math.ceil(total/SR_PER_PAGE));
+    var nav=$('<div class="sr-pager" role="navigation" aria-label="Result pages"></div>');
+
+    // a button that goes to a page; the click is handled by the "np" handler on <body>
+    function go(label, page, cls) {
+        var b=$('<button type="button"></button>').addClass(cls).text(label);
+        if(page < 1 || page > pages)
+            b.prop('disabled', true);
+        else
+            b.addClass('np').attr('data-q', q).attr('data-skip', (page-1)*SR_PER_PAGE);
+        return b;
+    }
+
+    nav.append(go('Previous', cur-1, 'sr-prev').attr('id','prev'));
+
+    var nums=$('<span class="sr-pages"></span>');
+    sr_pagelist(cur, pages).forEach(function(n){
+        if(n==0)
+            nums.append('<span class="sr-gap" aria-hidden="true">&hellip;</span>');
+        else if(n==cur)
+            nums.append($('<span class="sr-page sr-current" aria-current="page"></span>').text(n));
+        else {
+            var b=go(n, n, 'sr-page').attr('aria-label', 'Page '+n);
+            // on a narrow screen only the nearest pages (and first and last) are kept
+            if(Math.abs(n-cur) > 2 && n!=1 && n!=pages) b.addClass('sr-far');
+            nums.append(b);
+        }
+    });
+    nav.append(nums);
+
+    nav.append(go('Next', cur+1, 'sr-next').attr('id','next'));
+    return nav;
+}
+
+function sr_render(q, skip, data) {
+    var res=$('#res');
+    res.empty();
+    $('.sr-preview').remove();
+    sr_last=null;
+
+    if(!data || !data.rowCount) {
+        res.append($('<p class="sr-empty"></p>').text('no results for '+q));
+        return;
+    }
+    sr_last={q:q, skip:skip, data:data};
+
+    var n=data.rowCount, total=data.countInfo ? data.countInfo.indexCount : n;
+    var sr=$('<div class="sr"></div>');
+
+    sr.append(
+        '<header class="sr-head">'+
+          '<div class="sr-ctl"><input type="checkbox" id="sall" title="Select all" aria-label="Select all results"></div>'+
+          '<div class="sr-headmain">'+
+            '<button type="button" class="sr-toggle" id="showopt" aria-expanded="false" title="click to show database editing options">'+
+              '<span class="sr-caret" aria-hidden="true"></span>Options'+
+            '</button>'+
+            '<button type="button" class="sr-remove" id="rmselected">Remove Selected Items</button>'+
+            '<span class="sr-count"></span>'+
+          '</div>'+
+        '</header>'
+    );
+    sr.find('.sr-count').text('Results '+(skip+1)+'-'+(skip+n)+' of '+total);
+
+    var list=$('<ol class="sr-list"></ol>');
+    for (var i=0;i<data.rows.length;i++)
+        list.append(sr_item(data.rows[i]));
+    sr.append(list);
+
+    sr.append(sr_pager(q, skip, total));
+
+    res.append(sr);
+
+    // a site with no favicon gets the house; a thumbnail that will not load is dropped
+    sr.find('.sr-fav').on('error', function(){
+        if(this.getAttribute('src')!='images/home.ico') this.setAttribute('src','images/home.ico');
+    });
+    sr.find('.sr-thumb').on('error', function(){ $(this).remove(); });
+}
+
+/* open or close the editing column */
+function sr_setediting(on) {
+    $('#res .sr').toggleClass('is-editing', on);
+    $('#showopt').attr('aria-expanded', on ? 'true' : 'false')
+                 .attr('title', on ? 'click to hide database editing options' : 'click to show database editing options');
+    // nothing stays ticked out of sight
+    if(!on) $('#sall, #res .sitem').prop('checked', false);
+}
+
+/* Handlers for everything in the results.  Bound once, on #res, so they
+   keep working however many times the results are redrawn. */
+function sr_bind() {
+    var res=$('#res');
+
+    res.on('click', '#showopt', function(){
+        sr_setediting(!$('#res .sr').hasClass('is-editing'));
+    });
+
+    res.on('change', '#sall', function(){
+        $('#res .sitem').prop('checked', this.checked);
+    });
+
+    // keep the select-all box truthful when boxes are ticked one at a time
+    res.on('change', '.sitem', function(){
+        var all=$('#res .sitem');
+        $('#sall').prop('checked', all.length>0 && all.filter(':checked').length==all.length);
+    });
+
+    res.on('click', '#rmselected', function(){
+        var req={hash:[]};
+        $('#res .sitem:checked').each(function(){
+            req.hash.push($(this).closest('.sr-item').attr('data-hash'));
+        });
+        if(!req.hash.length)
+            sr_toast('Nothing selected', 'err', 800);
+        else
+            sr_delete(req);
+    });
+
+    res.on('click', '.sr-del', function(){
+        sr_askdelete($(this).closest('.sr-item'));
+    });
+
+    // a larger view of the thumbnail while the pointer is on it
+    res.on('mouseenter', '.sr-thumb', function(){
+        var r=this.getBoundingClientRect();
+        var p=$('<img class="sr-preview" alt="">').attr('src', this.getAttribute('src'));
+        $('.sr-preview').remove();
+        $('body').append(p);
+        p.on('load', function(){
+            var h=this.offsetHeight, top=r.top + r.height/2 - h/2;
+            top=Math.max(8, Math.min(top, window.innerHeight - h - 8));
+            p.css({top: top+'px', right: (window.innerWidth - r.left + 10)+'px', visibility:'visible'});
+        });
+    });
+    res.on('mouseleave', '.sr-thumb', function(){
+        $('.sr-preview').remove();
+    });
+}
+
+function dosearch(skip,q) {
     $('#histbox').remove();
     $('#res').show();
     $('#setbox').remove();
 
     if (!q) q=$('#fq').val();
     else $('#fq').val(q);
-    res.empty();
     if (!skip) skip=0;
     else skip=parseInt(skip);
-    if (q != '')
-     $.post( `https://${gset.server}/apps/shse/results.json` ,
-       {q:q, sk:skip, user:gset.user, key: gset.key},
-       function(data){
-        if (!data.rowCount)
-            res.append('no results for '+ $('#fq').val() );
-        else {
-          var l=data.rowCount;
-          var rescnt = "" + (skip+1) + '-' + (skip+l) + ' of ' + data.countInfo.indexCount;
-          res.append('<div title="click to show database editing options" id="showrm"><label class="hide ib sall"><input style="vertical-align:middle" type="checkbox" id="sall" class="hide ib" title="Select All">Select All</label>'+
-          '<span id="showopt" style="position:relative;">'+
-              '<span style="cursor: pointer;position: bsolute;left:-30px;top:-11px;">Options</span>' +
-              '<span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg) translate(4px,0px);font-size:28px;position:absolute;left:-30px;top:-10px;width:13px;" title="click to hide database editing options">&#8227;</span>'+
-          '</span>'+
-//          '<span id="showico" style="display:inline-block;cursor:pointer;transform:rotate(270deg);font-size:28px; position: absolute;left:-30px;top:-10px;width:13px;">&#8227;</span>'+
-          '<span style="display:inline-block;height:22px;padding: 2px 0px 0px 5px;">&nbsp;<span id="delsel" class="hide"><button style="padding: 2px 5px 0px 5px;border:1px solid #b00; border-radius:7px;;position:relative;top:0px;left:13px;" id="rmselected">Remove Select Items</button></span></span>'+
-          '<span style="float:right">Results '+rescnt+'</span></div>');
 
-          for (var i=0;i<l;i++) {
-              var r=data.rows[i];
-              var ico= r.image ? r.image : ''+r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico' ;
-              var icl = r.image? " hov" : '';
-              var d= new Date(0);
-              d.setUTCSeconds(parseInt(r.last));
-              var favico=r.url.match(/^https?:\/\/[^/]+/)+'/favicon.ico';        
-              res.append(`
-<section class="entry resi" data-hash="${r.hash}" data-dom="${r.dom}" id="r${i}">
-  ${ricos}
-  <div class="info">
-    <div class="link">
-      <a target="_blank" href="${r.url}">${escapeHtml(r.title.replace(/\s+/g,' '))}</a>
-    </div>
-    <div class="subtext">
-      <img src="${favico}" class="resico" />
-      <span class="url-text">&gt; ${r.url}<br>
-      </span>
-    </div>
-    <div class="description">
-        ${r.image ? '<img src="' + r.image + '" class="hov hov-inline">':''}
-        ${r.abstract}
-    </div>
-  </div>
-  <div class="thumb">
-      <span class="tstamp">(${fmtdate(d)})</span><br>`
-      + ( r.image ? `<img src=${r.image} class="hov">` : '' ) +
-  `</div>
-</section>`);
-          }
+    if (q == '') {
+        $('#res').empty();
+        return;
+    }
 
-          imcnt=0;
-          iccnt=0;
-          
-          imtot=$('.hov').each(function(){
-              loadImage($(this));
-          }).length;
-          var cnt=0;
-          ictot=$('.resico').each(function(){
-              loadIco($(this));
-          }).length;
-
-          if (skip > 9) 
-              res.append('<span class="abstract" style="color:blue; float:left;margin:10px;"><a data-q="'+q+'" data-skip="'+(skip-10)+'" class="np" id="prev">Previous</a></span>');
-
-          if(data.countInfo.indexCount>skip+10)
-              res.append('<span style="color:blue; float:right;margin:10px;" class="abstract"><a data-q="'+q+'" data-skip="'+(skip+10)+'" class="np" id="next">Next</a></span>');
-
+    $.post( `https://${gset.server}/apps/shse/results.json`,
+        {q:q, sk:skip, user:gset.user, key:gset.key},
+        function(data){
+            sr_render(q, skip, data);
+            dosave(true);
         }
-        mktitles();
-        attachhov();
-        dosave(true);
-       }
-     ).fail(postfail);
+    ).fail(postfail);
 }
 
 // for hist.js cookie, use local storage in popup instead.
@@ -449,9 +489,14 @@ $(document).ready(function(){
         });
 
         $('#fq').val(settings.lastq);
-        $('#res').html(settings.lastr);
-        mktitles();
-        attachhov();
+        sr_bind();
+        // draw the last results again from their saved data
+        var lr=settings.lastres;
+        if(lr && lr.layout==RESULTS_LAYOUT && lr.data)
+            sr_render(lr.q, lr.skip, lr.data);
+        // older versions saved the results as html; that is no longer used
+        if(settings.lastr!==undefined && browser.storage.local.remove)
+            browser.storage.local.remove('lastr');
     });
 
     enable.click(function(){

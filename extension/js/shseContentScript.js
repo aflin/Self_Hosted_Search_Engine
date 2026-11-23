@@ -454,25 +454,59 @@ function update_status (obj) {
 }
 
 
+/* Turn youtube's caption data (the "json3" timedtext format) into text.
+
+   Each event has tStartMs and a list of segs holding the words.  The text is
+   written as one line per YT_TRANSCRIPT_STEP seconds, each led by the time it
+   starts at:
+
+       [0:00] welcome back today we are looking at ...
+       [0:30] and the reason that matters is ...
+
+   A stamp on every caption (every few words) would put numbers between the
+   words of every sentence, which hurts phrase matching in the search engine
+   and the snippets it shows; one per half minute is enough to find the place
+   in the video.  If the data carries no times, plain text is returned. */
+var YT_TRANSCRIPT_STEP=30;
+
+function yt_stamp(ms) {
+    var t=Math.floor(ms/1000), h=Math.floor(t/3600), m=Math.floor((t%3600)/60), sec=t%60;
+    return (h ? h+':'+(m<10?'0':'')+m : m) + ':' + (sec<10?'0':'') + sec;
+}
+
+function yt_transcript(events) {
+    var lines=[], cur=null, timed=false, i, j;
+    if(!events) return '';
+    for (i=0;i<events.length;i++) {
+        var ev=events[i], txt='';
+        if(!ev || !ev.segs) continue;
+        for (j=0;j<ev.segs.length;j++)
+            if(ev.segs[j] && typeof ev.segs[j].utf8=='string') txt+=ev.segs[j].utf8;
+        txt=txt.replace(/\s+/g,' ').trim();
+        if(!txt.length) continue;
+        var start = (typeof ev.tStartMs=='number') ? ev.tStartMs : null;
+        if(start!==null) timed=true;
+        if(!cur || (start!==null && cur.start!==null && start - cur.start >= YT_TRANSCRIPT_STEP*1000)) {
+            cur={start:start, text:txt};
+            lines.push(cur);
+        } else
+            cur.text += ' ' + txt;
+    }
+    return lines.map(function(l){
+        return (timed && l.start!==null ? '['+yt_stamp(l.start)+'] ' : '') + l.text;
+    }).join("\n");
+}
+
 function get_youtube_captions(cb) {
     if(ytsubs) {
         try {
             fetch(ytsubs).then(function(resp){
                 return resp.json();
             }).then(function(data) {
-                let d="", events=data.events;
                 //console.log("THE DATA FROM YTSUBS:", data);
-                for (var evn in events) {
-                    const ev=events[evn];
-                    for (var segn in ev.segs) {
-                        const seg=ev.segs[segn];
-                        let txt=seg.utf8;
-                        //console.log(txt);
-                        d+=txt + " ";
-                    }
-                }
-                d=d.replace(/\S+/,' ');
-                cb(d);
+                let d=yt_transcript(data.events);
+                // labelled, and set apart from the page text it is appended to
+                cb(d.length ? "\n\nTranscript:\n" + d : false);
             }).catch(function(e){
                 cb(false,e);
             });
@@ -571,7 +605,7 @@ function savepage (callback){
                     setTimeout(() => {
                         get_youtube_captions(function(ctxt,err){
                             if(ctxt)
-                                sobj.text = sobj.text + ' ' + ctxt;
+                                sobj.text = sobj.text + ctxt;
 
                             if(err)
                                 console.log("Failed to get youtube captions", err);
@@ -582,7 +616,7 @@ function savepage (callback){
                 } else {
                     get_youtube_captions(function(ctxt,err){
                         if(ctxt)
-                            sobj.text = sobj.text + ' ' + ctxt;
+                            sobj.text = sobj.text + ctxt;
 
                         if(err)
                             console.log("Failed to get youtube captions", err);

@@ -107,9 +107,14 @@ sync_web() {
     grep -q '^var httpOnlyPort=80;' "$dest/web_server/web_server_conf.js" \
         || die "could not set httpOnlyPort in web_server_conf.js"
 
-    # html: the files git tracks, minus jquery-ui themes that are not in use
-    (cd "$REPO" && git ls-files -z web_server/html) | while IFS= read -r -d '' f; do
-        case "$f" in web_server/html/css/themes/pepper-grinder/*) continue ;; esac
+    # html: the files git tracks, and new ones not yet added, minus editor
+    # backups and jquery-ui themes that are not in use
+    (cd "$REPO" && git ls-files -z --cached --others --exclude-standard web_server/html) | while IFS= read -r -d '' f; do
+        case "$f" in
+            web_server/html/css/themes/pepper-grinder/*) continue ;;
+            *~|*.bak|*.orig|*/DEADJOE) continue ;;
+        esac
+        [ -e "$REPO/$f" ] || continue   # tracked but deleted in the working tree
         mkdir -p "$dest/$(dirname "$f")"
         cp -P "$REPO/$f" "$dest/$f"
     done
